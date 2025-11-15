@@ -1,6 +1,6 @@
-import WSClient from './ws-client.js';
-import SocketIOClient from './socketio-client.js';
-import Logger from './logger.js';
+import WSClient from './clients/ws-client.js';
+import SocketIOClient from './clients/socketio-client.js';
+import Logger from './utils/logger.js';
 
 const logger = new Logger();
 
