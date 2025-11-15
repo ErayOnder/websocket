@@ -1,0 +1,25 @@
+{
+  "name": "websocket-client-simulator",
+  "version": "1.0.0",
+  "description": "Client simulator for WebSocket benchmarking - generates phased concurrent load and measures client-side metrics",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "websocket",
+    "benchmark",
+    "performance",
+    "testing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.18.3",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {}
+}
+
