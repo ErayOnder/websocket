@@ -1,0 +1,6 @@
+*.go
+!server.go
+.git
+.gitignore
+*.md
+

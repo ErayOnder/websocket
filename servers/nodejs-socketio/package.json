@@ -1,0 +1,23 @@
+{
+  "name": "websocket-server-socketio",
+  "version": "1.0.0",
+  "description": "WebSocket server using socket.io library (v4.8.1)",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "websocket",
+    "server",
+    "benchmark",
+    "socket.io"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io": "4.8.1"
+  }
+}
+

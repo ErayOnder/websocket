@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Node.js - ws library server
+  nodejs-ws:
+    build:
+      context: ./nodejs-ws
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    networks:
+      - websocket-benchmark
+    profiles:
+      - nodejs-ws
+
+  # Node.js - socket.io server
+  nodejs-socketio:
+    build:
+      context: ./nodejs-socketio
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    networks:
+      - websocket-benchmark
+    profiles:
+      - nodejs-socketio
+
+  # Golang - gorilla/websocket server
+  golang-gorilla:
+    build:
+      context: ./golang-gorilla
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    networks:
+      - websocket-benchmark
+    profiles:
+      - golang-gorilla
+
+  # Golang - coder/websocket server
+  golang-coder:
+    build:
+      context: ./golang-coder
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    networks:
+      - websocket-benchmark
+    profiles:
+      - golang-coder
+
+networks:
+  websocket-benchmark:
+    driver: bridge
+
