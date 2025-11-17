@@ -72,7 +72,8 @@ class BroadcastTest {
   handleBroadcastMessage(clientId, messageData) {
     try {
       const receiveTime = Date.now();
-      const message = JSON.parse(messageData);
+      // Socket.IO sends parsed objects, native WebSocket sends strings
+      const message = typeof messageData === 'string' ? JSON.parse(messageData) : messageData;
 
       if (message.type !== 'broadcast') {
         return;

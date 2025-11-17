@@ -70,7 +70,8 @@ class EchoTest {
   handleEchoResponse(messageData) {
     try {
       const receiveTime = performance.now(); // High precision timing
-      const message = JSON.parse(messageData);
+      // Socket.IO sends parsed objects, native WebSocket sends strings
+      const message = typeof messageData === 'string' ? JSON.parse(messageData) : messageData;
 
       if (message.type !== 'echo') {
         return;
