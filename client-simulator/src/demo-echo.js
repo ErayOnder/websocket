@@ -6,7 +6,7 @@ import TestRunner from './runners/test-runner.js';
  */
 
 async function main() {
-  const config = {
+  const wsConfig = {
     serverUrl: 'ws://localhost:8080',
     libraryName: 'ws',
     clientType: 'ws',
@@ -14,7 +14,7 @@ async function main() {
     messageInterval: 100 // Send message every 100ms
   };
 
-  const runner = new TestRunner(config);
+  const wsRunner = new TestRunner(wsConfig);
 
   console.log('');
   console.log('='.repeat(60));
@@ -32,7 +32,7 @@ async function main() {
   console.log('='.repeat(60));
   console.log('');
 
-  const result = await runner.runSingleEchoTest();
+  const result = await wsRunner.runSingleEchoTest();
 
   console.log('');
   console.log('='.repeat(60));

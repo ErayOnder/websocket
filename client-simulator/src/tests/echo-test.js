@@ -49,14 +49,14 @@ class EchoTest {
   async sendEchoMessage() {
     try {
       const messageId = ++this.messageCounter;
-      const sendTime = Date.now();
+      const sendTime = performance.now(); // High precision timing
 
       this.pendingMessages.set(messageId, sendTime);
 
       const message = JSON.stringify({
         type: 'echo',
         id: messageId,
-        timestamp: sendTime
+        timestamp: Date.now() // Keep Date.now() for timestamp in message
       });
 
       await this.client.send(message);
@@ -69,7 +69,7 @@ class EchoTest {
 
   handleEchoResponse(messageData) {
     try {
-      const receiveTime = Date.now();
+      const receiveTime = performance.now(); // High precision timing
       const message = JSON.parse(messageData);
 
       if (message.type !== 'echo') {
@@ -80,13 +80,13 @@ class EchoTest {
       const sendTime = this.pendingMessages.get(messageId);
 
       if (sendTime) {
-        const rtt = receiveTime - sendTime;
+        const rtt = receiveTime - sendTime; // RTT in milliseconds with microsecond precision
 
         this.rttData.push({
           clientId: this.client.clientId,
           messageId: messageId,
           rtt: rtt,
-          timestamp: receiveTime
+          timestamp: Date.now() // Keep Date.now() for timestamp in CSV
         });
 
         this.pendingMessages.delete(messageId);

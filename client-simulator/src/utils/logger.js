@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class Logger {
-  constructor(dataDir = '../../data/raw') {
+  constructor(dataDir = '../../../data/raw') {
     this.dataDir = path.resolve(__dirname, dataDir);
     this.ensureDataDirectory();
   }
@@ -38,7 +38,8 @@ class Logger {
     const filepath = path.join(this.dataDir, filename);
 
     const header = 'client_id,connection_time_ms\n';
-    const rows = data.map(d => `${d.clientId},${d.connectionTime}`).join('\n');
+    // Format connection time with 3 decimal places for precision
+    const rows = data.map(d => `${d.clientId},${d.connectionTime.toFixed(3)}`).join('\n');
     const content = header + rows + '\n';
 
     fs.writeFileSync(filepath, content);
@@ -56,7 +57,8 @@ class Logger {
     const filepath = path.join(this.dataDir, filename);
 
     const header = 'client_id,rtt_ms,timestamp\n';
-    const rows = data.map(d => `${d.clientId},${d.rtt},${d.timestamp}`).join('\n');
+    // Format RTT with 3 decimal places for precision
+    const rows = data.map(d => `${d.clientId},${d.rtt.toFixed(3)},${d.timestamp}`).join('\n');
     const content = header + rows + '\n';
 
     fs.writeFileSync(filepath, content);
@@ -74,7 +76,8 @@ class Logger {
     const filepath = path.join(this.dataDir, filename);
 
     const header = 'client_id,latency_ms,timestamp\n';
-    const rows = data.map(d => `${d.clientId},${d.latency},${d.timestamp}`).join('\n');
+    // Format latency with 3 decimal places for precision
+    const rows = data.map(d => `${d.clientId},${d.latency.toFixed(3)},${d.timestamp}`).join('\n');
     const content = header + rows + '\n';
 
     fs.writeFileSync(filepath, content);

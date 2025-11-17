@@ -14,7 +14,7 @@ class SocketIOClient {
 
   connect() {
     return new Promise((resolve, reject) => {
-      this.connectionStartTime = Date.now();
+      this.connectionStartTime = performance.now(); // High precision timing
 
       try {
         this.socket = io(this.url, {
@@ -23,7 +23,7 @@ class SocketIOClient {
         });
 
         this.socket.on('connect', () => {
-          this.connectionTime = Date.now() - this.connectionStartTime;
+          this.connectionTime = performance.now() - this.connectionStartTime; // High precision timing
           this.isConnected = true;
           resolve(this.connectionTime);
         });

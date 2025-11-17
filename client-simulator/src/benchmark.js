@@ -76,9 +76,6 @@ Examples:
   `);
 }
 
-/**
- * Main benchmark execution
- */
 async function main() {
   const config = parseArgs();
 

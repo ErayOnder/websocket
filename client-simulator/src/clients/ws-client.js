@@ -14,13 +14,13 @@ class WSClient {
 
   connect() {
     return new Promise((resolve, reject) => {
-      this.connectionStartTime = Date.now();
+      this.connectionStartTime = performance.now(); // High precision timing
 
       try {
         this.ws = new WebSocket(this.url);
 
         this.ws.on('open', () => {
-          this.connectionTime = Date.now() - this.connectionStartTime;
+          this.connectionTime = performance.now() - this.connectionStartTime; // High precision timing
           this.isConnected = true;
           resolve(this.connectionTime);
         });
