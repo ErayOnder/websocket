@@ -19,6 +19,7 @@ data/processed/*
 dist/
 build/
 *.egg-info/
+servers/*/server
 
 # IDE
 .vscode/

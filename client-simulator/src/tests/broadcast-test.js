@@ -53,7 +53,7 @@ class BroadcastTest {
   async sendBroadcast() {
     try {
       const broadcastId = ++this.broadcastCounter;
-      const sendTime = Date.now();
+      const sendTime = performance.now();
 
       const message = JSON.stringify({
         type: 'broadcast',
@@ -71,7 +71,7 @@ class BroadcastTest {
 
   handleBroadcastMessage(clientId, messageData) {
     try {
-      const receiveTime = Date.now();
+      const receiveTime = performance.now(); // High precision timing
       // Socket.IO sends parsed objects, native WebSocket sends strings
       const message = typeof messageData === 'string' ? JSON.parse(messageData) : messageData;
 
@@ -87,7 +87,7 @@ class BroadcastTest {
         clientId: clientId,
         broadcastId: broadcastId,
         latency: latency,
-        timestamp: receiveTime
+        timestamp: Date.now()
       });
 
     } catch (error) {
