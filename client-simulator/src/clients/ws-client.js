@@ -10,6 +10,10 @@ class WSClient {
     this.isConnected = false;
     this.messageHandlers = [];
     this.logger = logger;
+    this.disconnectCount = 0;
+    this.disconnectTimestamps = [];
+    this.wasUnexpectedDisconnect = false;
+    this.closeHandlers = [];
   }
 
   connect() {
@@ -39,8 +43,24 @@ class WSClient {
           reject(error);
         });
 
-        this.ws.on('close', () => {
+        this.ws.on('close', (code, reason) => {
+          const wasConnected = this.isConnected;
           this.isConnected = false;
+
+          if (wasConnected) {
+            // Track unexpected disconnects (not initiated by client)
+            this.disconnectCount++;
+            this.disconnectTimestamps.push({
+              timestamp: Date.now(),
+              code: code,
+              reason: reason?.toString() || '',
+              wasUnexpected: true
+            });
+            this.wasUnexpectedDisconnect = true;
+          }
+
+          // Notify close handlers
+          this.closeHandlers.forEach(handler => handler({ code, reason, wasUnexpected: wasConnected }));
         });
 
       } catch (error) {
@@ -51,6 +71,10 @@ class WSClient {
 
   onMessage(handler) {
     this.messageHandlers.push(handler);
+  }
+
+  onClose(handler) {
+    this.closeHandlers.push(handler);
   }
 
   send(message) {
@@ -72,6 +96,7 @@ class WSClient {
 
   close() {
     if (this.ws) {
+      this.wasUnexpectedDisconnect = false; // Mark as expected disconnect
       this.ws.close();
       this.isConnected = false;
     }
@@ -79,6 +104,14 @@ class WSClient {
 
   getConnectionTime() {
     return this.connectionTime;
+  }
+
+  getConnectionStabilityMetrics() {
+    return {
+      clientId: this.clientId,
+      disconnectCount: this.disconnectCount,
+      disconnects: this.disconnectTimestamps
+    };
   }
 }
 

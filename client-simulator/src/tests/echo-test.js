@@ -10,6 +10,9 @@ class EchoTest {
     this.rttData = [];
     this.messageCounter = 0;
     this.pendingMessages = new Map();
+    this.messagesSent = 0;
+    this.messagesReceived = 0;
+    this.timeoutThreshold = 10000; // 10 seconds timeout for message loss
   }
 
   /**
@@ -52,6 +55,7 @@ class EchoTest {
       const sendTime = performance.now(); // High precision timing
 
       this.pendingMessages.set(messageId, sendTime);
+      this.messagesSent++;
 
       const message = JSON.stringify({
         type: 'echo',
@@ -91,6 +95,7 @@ class EchoTest {
         });
 
         this.pendingMessages.delete(messageId);
+        this.messagesReceived++;
       }
 
     } catch (error) {
@@ -108,7 +113,17 @@ class EchoTest {
 
   getStatistics() {
     if (this.rttData.length === 0) {
-      return { mean: 0, median: 0, min: 0, max: 0, count: 0 };
+      return {
+        mean: 0,
+        median: 0,
+        min: 0,
+        max: 0,
+        count: 0,
+        p95: 0,
+        p99: 0,
+        jitter: 0,
+        messageLossRate: this.getMessageLossRate()
+      };
     }
 
     const rtts = this.rttData.map(d => d.rtt).sort((a, b) => a - b);
@@ -120,12 +135,44 @@ class EchoTest {
     const min = rtts[0];
     const max = rtts[rtts.length - 1];
 
+    // Calculate percentiles
+    const p95Index = Math.floor(rtts.length * 0.95);
+    const p99Index = Math.floor(rtts.length * 0.99);
+    const p95 = rtts[p95Index] || rtts[rtts.length - 1];
+    const p99 = rtts[p99Index] || rtts[rtts.length - 1];
+
+    // Calculate standard deviation for jitter
+    const variance = rtts.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / rtts.length;
+    const stdDev = Math.sqrt(variance);
+
     return {
       mean: parseFloat(mean.toFixed(2)),
       median: parseFloat(median.toFixed(2)),
       min: min,
       max: max,
-      count: rtts.length
+      count: rtts.length,
+      p95: parseFloat(p95.toFixed(2)),
+      p99: parseFloat(p99.toFixed(2)),
+      jitter: parseFloat(stdDev.toFixed(2)),
+      messageLossRate: this.getMessageLossRate()
+    };
+  }
+
+  getMessageLossRate() {
+    if (this.messagesSent === 0) {
+      return 0;
+    }
+    const lostMessages = this.messagesSent - this.messagesReceived;
+    return parseFloat(((lostMessages / this.messagesSent) * 100).toFixed(2));
+  }
+
+  getReliabilityMetrics() {
+    return {
+      clientId: this.client.clientId,
+      messagesSent: this.messagesSent,
+      messagesReceived: this.messagesReceived,
+      messagesLost: this.messagesSent - this.messagesReceived,
+      lossRate: this.getMessageLossRate()
     };
   }
 }

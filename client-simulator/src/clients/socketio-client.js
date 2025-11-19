@@ -10,6 +10,10 @@ class SocketIOClient {
     this.isConnected = false;
     this.messageHandlers = [];
     this.logger = logger;
+    this.disconnectCount = 0;
+    this.disconnectTimestamps = [];
+    this.wasUnexpectedDisconnect = false;
+    this.closeHandlers = [];
   }
 
   connect() {
@@ -41,8 +45,23 @@ class SocketIOClient {
           reject(error);
         });
 
-        this.socket.on('disconnect', () => {
+        this.socket.on('disconnect', (reason) => {
+          const wasConnected = this.isConnected;
           this.isConnected = false;
+
+          if (wasConnected) {
+            // Track unexpected disconnects (not initiated by client)
+            this.disconnectCount++;
+            this.disconnectTimestamps.push({
+              timestamp: Date.now(),
+              reason: reason || '',
+              wasUnexpected: true
+            });
+            this.wasUnexpectedDisconnect = true;
+          }
+
+          // Notify close handlers
+          this.closeHandlers.forEach(handler => handler({ reason, wasUnexpected: wasConnected }));
         });
 
       } catch (error) {
@@ -53,6 +72,10 @@ class SocketIOClient {
 
   onMessage(handler) {
     this.messageHandlers.push(handler);
+  }
+
+  onClose(handler) {
+    this.closeHandlers.push(handler);
   }
 
   send(message) {
@@ -69,6 +92,7 @@ class SocketIOClient {
 
   close() {
     if (this.socket) {
+      this.wasUnexpectedDisconnect = false; // Mark as expected disconnect
       this.socket.close();
       this.isConnected = false;
     }
@@ -76,6 +100,14 @@ class SocketIOClient {
 
   getConnectionTime() {
     return this.connectionTime;
+  }
+
+  getConnectionStabilityMetrics() {
+    return {
+      clientId: this.clientId,
+      disconnectCount: this.disconnectCount,
+      disconnects: this.disconnectTimestamps
+    };
   }
 }
 

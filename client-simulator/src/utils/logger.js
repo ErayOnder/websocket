@@ -53,6 +53,18 @@ class Logger {
         fs.unlinkSync(broadcastFile);
         filesDeleted++;
       }
+
+      const reliabilityFile = path.join(this.dataDir, `reliability_${library}_${numClients}clients.csv`);
+      if (fs.existsSync(reliabilityFile)) {
+        fs.unlinkSync(reliabilityFile);
+        filesDeleted++;
+      }
+
+      const stabilityFile = path.join(this.dataDir, `connection_stability_${library}_${numClients}clients.csv`);
+      if (fs.existsSync(stabilityFile)) {
+        fs.unlinkSync(stabilityFile);
+        filesDeleted++;
+      }
     }
   }
 
@@ -120,6 +132,54 @@ class Logger {
     }
 
     const rows = data.map(d => `${d.clientId},${d.latency.toFixed(3)},${d.timestamp}`).join('\n');
+    content += rows + '\n';
+
+    fs.appendFileSync(filepath, content);
+  }
+
+  /**
+   * Write reliability metrics to CSV (appends to existing file if present)
+   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * @param {number} numClients - Number of clients in this test
+   * @param {Array<{clientId: number, messagesSent: number, messagesReceived: number, messagesLost: number, lossRate: number}>} data - Reliability data
+   */
+  writeReliabilityMetrics(library, numClients, data) {
+    const filename = `reliability_${library}_${numClients}clients.csv`;
+    const filepath = path.join(this.dataDir, filename);
+
+    const fileExists = fs.existsSync(filepath);
+
+    let content = '';
+    if (!fileExists) {
+      content = 'client_id,messages_sent,messages_received,messages_lost,loss_rate_percent\n';
+    }
+
+    const rows = data.map(d =>
+      `${d.clientId},${d.messagesSent},${d.messagesReceived},${d.messagesLost},${d.lossRate.toFixed(2)}`
+    ).join('\n');
+    content += rows + '\n';
+
+    fs.appendFileSync(filepath, content);
+  }
+
+  /**
+   * Write connection stability metrics to CSV (appends to existing file if present)
+   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * @param {number} numClients - Number of clients in this test
+   * @param {Array<{clientId: number, disconnectCount: number}>} data - Connection stability data
+   */
+  writeConnectionStability(library, numClients, data) {
+    const filename = `connection_stability_${library}_${numClients}clients.csv`;
+    const filepath = path.join(this.dataDir, filename);
+
+    const fileExists = fs.existsSync(filepath);
+
+    let content = '';
+    if (!fileExists) {
+      content = 'client_id,disconnect_count\n';
+    }
+
+    const rows = data.map(d => `${d.clientId},${d.disconnectCount}`).join('\n');
     content += rows + '\n';
 
     fs.appendFileSync(filepath, content);
