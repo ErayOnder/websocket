@@ -214,6 +214,8 @@ class TestRunner {
     this.logger.log(`Iterations per phase: ${iterations}`);
     this.logger.log('===');
 
+    this.logger.clearPhasedTestData(this.config.libraryName, loadPhases);
+
     const results = [];
 
     for (const numClients of loadPhases) {
@@ -366,6 +368,8 @@ class TestRunner {
     this.logger.log(`Iterations per phase: ${iterations}`);
     this.logger.log(`Broadcast interval: ${broadcastInterval}ms`);
     this.logger.log('===');
+
+    this.logger.clearPhasedTestData(this.config.libraryName, loadPhases);
 
     const results = [];
 

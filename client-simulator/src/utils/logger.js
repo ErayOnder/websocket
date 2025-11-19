@@ -28,7 +28,36 @@ class Logger {
   }
 
   /**
-   * Write connection time metrics to CSV
+   * Clear CSV files for a specific library and client counts before starting a new phased test
+   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * @param {Array<number>} clientCounts - Array of client counts to clear data for
+   */
+  clearPhasedTestData(library, clientCounts) {
+    let filesDeleted = 0;
+
+    for (const numClients of clientCounts) {
+      const rttFile = path.join(this.dataDir, `rtt_${library}_${numClients}clients.csv`);
+      if (fs.existsSync(rttFile)) {
+        fs.unlinkSync(rttFile);
+        filesDeleted++;
+      }
+
+      const connFile = path.join(this.dataDir, `connection_time_${library}_${numClients}clients.csv`);
+      if (fs.existsSync(connFile)) {
+        fs.unlinkSync(connFile);
+        filesDeleted++;
+      }
+
+      const broadcastFile = path.join(this.dataDir, `broadcast_latency_${library}_${numClients}clients.csv`);
+      if (fs.existsSync(broadcastFile)) {
+        fs.unlinkSync(broadcastFile);
+        filesDeleted++;
+      }
+    }
+  }
+
+  /**
+   * Write connection time metrics to CSV (appends to existing file if present)
    * @param {string} library - Library name (e.g., 'ws', 'socketio')
    * @param {number} numClients - Number of clients in this test
    * @param {Array<{clientId: number, connectionTime: number}>} data - Connection time data
@@ -37,17 +66,21 @@ class Logger {
     const filename = `connection_time_${library}_${numClients}clients.csv`;
     const filepath = path.join(this.dataDir, filename);
 
-    const header = 'client_id,connection_time_ms\n';
-    // Format connection time with 3 decimal places for precision
-    const rows = data.map(d => `${d.clientId},${d.connectionTime.toFixed(3)}`).join('\n');
-    const content = header + rows + '\n';
+    const fileExists = fs.existsSync(filepath);
 
-    fs.writeFileSync(filepath, content);
-    console.log(`[Logger] Wrote connection time data to ${filename}`);
+    let content = '';
+    if (!fileExists) {
+      content = 'client_id,connection_time_ms\n';
+    }
+
+    const rows = data.map(d => `${d.clientId},${d.connectionTime.toFixed(3)}`).join('\n');
+    content += rows + '\n';
+
+    fs.appendFileSync(filepath, content);
   }
 
   /**
-   * Write RTT (Round Trip Time) metrics to CSV
+   * Write RTT (Round Trip Time) metrics to CSV (appends to existing file if present)
    * @param {string} library - Library name (e.g., 'ws', 'socketio')
    * @param {number} numClients - Number of clients in this test
    * @param {Array<{clientId: number, rtt: number, timestamp: number}>} data - RTT data
@@ -56,17 +89,21 @@ class Logger {
     const filename = `rtt_${library}_${numClients}clients.csv`;
     const filepath = path.join(this.dataDir, filename);
 
-    const header = 'client_id,rtt_ms,timestamp\n';
-    // Format RTT with 3 decimal places for precision
-    const rows = data.map(d => `${d.clientId},${d.rtt.toFixed(3)},${d.timestamp}`).join('\n');
-    const content = header + rows + '\n';
+    const fileExists = fs.existsSync(filepath);
 
-    fs.writeFileSync(filepath, content);
-    console.log(`[Logger] Wrote RTT data to ${filename}`);
+    let content = '';
+    if (!fileExists) {
+      content = 'client_id,rtt_ms,timestamp\n';
+    }
+
+    const rows = data.map(d => `${d.clientId},${d.rtt.toFixed(3)},${d.timestamp}`).join('\n');
+    content += rows + '\n';
+
+    fs.appendFileSync(filepath, content);
   }
 
   /**
-   * Write broadcast latency metrics to CSV
+   * Write broadcast latency metrics to CSV (appends to existing file if present)
    * @param {string} library - Library name (e.g., 'ws', 'socketio')
    * @param {number} numClients - Number of clients in this test
    * @param {Array<{clientId: number, latency: number, timestamp: number}>} data - Broadcast latency data
@@ -75,13 +112,17 @@ class Logger {
     const filename = `broadcast_latency_${library}_${numClients}clients.csv`;
     const filepath = path.join(this.dataDir, filename);
 
-    const header = 'client_id,latency_ms,timestamp\n';
-    // Format latency with 3 decimal places for precision
-    const rows = data.map(d => `${d.clientId},${d.latency.toFixed(3)},${d.timestamp}`).join('\n');
-    const content = header + rows + '\n';
+    const fileExists = fs.existsSync(filepath);
 
-    fs.writeFileSync(filepath, content);
-    console.log(`[Logger] Wrote broadcast latency data to ${filename}`);
+    let content = '';
+    if (!fileExists) {
+      content = 'client_id,latency_ms,timestamp\n';
+    }
+
+    const rows = data.map(d => `${d.clientId},${d.latency.toFixed(3)},${d.timestamp}`).join('\n');
+    content += rows + '\n';
+
+    fs.appendFileSync(filepath, content);
   }
 }
 
