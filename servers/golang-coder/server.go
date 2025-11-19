@@ -26,14 +26,14 @@ type Client struct {
 }
 
 type Server struct {
-	port               string
-	clients            map[*Client]bool
-	clientsMux         sync.RWMutex
-	logger             *Logger
-	messageCount       int
-	messageCountMux    sync.Mutex
-	throughputTicker   *time.Ticker
-	shutdownChan       chan struct{}
+	port             string
+	clients          map[*Client]bool
+	clientsMux       sync.RWMutex
+	logger           *Logger
+	messageCount     int
+	messageCountMux  sync.Mutex
+	throughputTicker *time.Ticker
+	shutdownChan     chan struct{}
 }
 
 func NewServer(port string) *Server {
@@ -47,13 +47,10 @@ func NewServer(port string) *Server {
 }
 
 func (s *Server) Start() error {
-	// Start throughput tracker
 	go s.trackThroughput()
 
-	// Set up graceful shutdown
 	go s.handleShutdown()
 
-	// Create HTTP server
 	http.HandleFunc("/", s.handleWebSocket)
 
 	s.logger.Log(fmt.Sprintf("Coder WebSocket server listening on port %s", s.port))
@@ -62,7 +59,6 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// Accept WebSocket connection
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		InsecureSkipVerify: true,
 	})
@@ -75,7 +71,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s.addClient(client)
 	defer s.removeClient(client)
 
-	// Read messages from client
 	ctx := context.Background()
 	for {
 		msgType, data, err := conn.Read(ctx)
@@ -98,7 +93,6 @@ func (s *Server) handleMessage(client *Client, data []byte) {
 	var msg Message
 	if err := json.Unmarshal(data, &msg); err != nil {
 		s.logger.Log(fmt.Sprintf("Failed to parse JSON message: %v, raw data: %s", err, string(data)))
-		// Not a valid JSON message, echo it back
 		client.mu.Lock()
 		client.conn.Write(context.Background(), websocket.MessageText, data)
 		client.mu.Unlock()
@@ -112,7 +106,6 @@ func (s *Server) handleMessage(client *Client, data []byte) {
 		s.handleBroadcast(client, &msg)
 	default:
 		s.logger.Log(fmt.Sprintf("Unknown message type: '%s', echoing back", msg.Type))
-		// Unknown message type, echo it back
 		client.mu.Lock()
 		client.conn.Write(context.Background(), websocket.MessageText, data)
 		client.mu.Unlock()
@@ -216,7 +209,6 @@ func (s *Server) handleShutdown() {
 	close(s.shutdownChan)
 	s.throughputTicker.Stop()
 
-	// Close all client connections
 	s.clientsMux.Lock()
 	for client := range s.clients {
 		client.conn.Close(websocket.StatusGoingAway, "Server shutting down")

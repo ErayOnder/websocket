@@ -21,15 +21,15 @@ type Message struct {
 }
 
 type Server struct {
-	port               string
-	upgrader           websocket.Upgrader
-	clients            map[*websocket.Conn]bool
-	clientsMux         sync.RWMutex
-	logger             *Logger
-	messageCount       int
-	messageCountMux    sync.Mutex
-	throughputTicker   *time.Ticker
-	shutdownChan       chan struct{}
+	port             string
+	upgrader         websocket.Upgrader
+	clients          map[*websocket.Conn]bool
+	clientsMux       sync.RWMutex
+	logger           *Logger
+	messageCount     int
+	messageCountMux  sync.Mutex
+	throughputTicker *time.Ticker
+	shutdownChan     chan struct{}
 }
 
 func NewServer(port string) *Server {
@@ -41,7 +41,7 @@ func NewServer(port string) *Server {
 		port: port,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return true // Allow all origins for benchmarking
+				return true
 			},
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -53,13 +53,10 @@ func NewServer(port string) *Server {
 }
 
 func (s *Server) Start() error {
-	// Start throughput tracking
 	s.startThroughputTracking()
 
-	// Setup HTTP handler
 	http.HandleFunc("/", s.handleWebSocket)
 
-	// Setup signal handlers for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -70,7 +67,6 @@ func (s *Server) Start() error {
 		os.Exit(0)
 	}()
 
-	// Print startup information
 	fmt.Println("============================================================")
 	fmt.Println("Gorilla WebSocket Server (v1.5.3)")
 	fmt.Println("============================================================")
@@ -86,7 +82,6 @@ func (s *Server) Start() error {
 
 	s.logger.Log(fmt.Sprintf("Gorilla WebSocket server listening on port %s", s.port))
 
-	// Start HTTP server
 	return http.ListenAndServe(":"+s.port, nil)
 }
 
@@ -100,7 +95,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s.addClient(conn)
 	defer s.removeClient(conn)
 
-	// Handle incoming messages
 	for {
 		messageType, data, err := conn.ReadMessage()
 		if err != nil {
@@ -241,7 +235,6 @@ func (s *Server) Stop() {
 	}
 	close(s.shutdownChan)
 
-	// Close all client connections
 	s.clientsMux.Lock()
 	for client := range s.clients {
 		client.Close()

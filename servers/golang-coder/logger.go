@@ -16,15 +16,12 @@ type Logger struct {
 }
 
 func NewLogger() *Logger {
-	// Create data/raw directory if it doesn't exist
 	dataDir := filepath.Join("..", "..", "data", "raw")
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		log.Printf("Warning: Failed to create data directory: %v", err)
 	}
 
 	filePath := filepath.Join(dataDir, "throughput_golang_coder.csv")
-
-	// Open CSV file for appending
 	csvFile, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Printf("Warning: Failed to open CSV file: %v", err)
@@ -33,7 +30,6 @@ func NewLogger() *Logger {
 
 	csvWriter := csv.NewWriter(csvFile)
 
-	// Write header if file is empty
 	fileInfo, _ := csvFile.Stat()
 	if fileInfo.Size() == 0 {
 		header := []string{"timestamp", "messages_per_second", "active_connections"}

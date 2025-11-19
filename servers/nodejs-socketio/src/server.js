@@ -2,16 +2,12 @@ import { Server } from 'socket.io';
 import { createServer } from 'http';
 import Logger from './logger.js';
 
-/**
- * WebSocket Server using Socket.IO library (v4.8.1)
- * Implements Echo and Broadcast test handlers
- */
 class SocketIOServer {
   constructor(port = 3000) {
     this.port = port;
     this.httpServer = null;
     this.io = null;
-    this.clients = new Map(); // Map of socket.id -> socket
+    this.clients = new Map();
     this.logger = new Logger();
 
     // Throughput tracking
@@ -20,14 +16,8 @@ class SocketIOServer {
     this.throughputData = [];
   }
 
-  /**
-   * Start the Socket.IO server
-   */
   start() {
-    // Create HTTP server
     this.httpServer = createServer();
-
-    // Create Socket.IO server with WebSocket-only transport for fair comparison
     this.io = new Server(this.httpServer, {
       transports: ['websocket'],
       cors: {
@@ -45,19 +35,14 @@ class SocketIOServer {
       this.startThroughputTracking();
     });
 
-    // Graceful shutdown
     process.on('SIGTERM', () => this.stop());
     process.on('SIGINT', () => this.stop());
   }
 
-  /**
-   * Handle new Socket.IO connection
-   */
   handleConnection(socket) {
     this.clients.set(socket.id, socket);
     this.logger.log(`Client connected. Total clients: ${this.clients.size}`);
 
-    // Handle 'message' event for compatibility with client simulator
     socket.on('message', (data) => {
       this.handleMessage(socket, data);
     });
@@ -73,14 +58,10 @@ class SocketIOServer {
     });
   }
 
-  /**
-   * Handle incoming message
-   */
   handleMessage(socket, data) {
     this.messageCount++;
 
     try {
-      // Socket.IO sends parsed objects, but might receive strings
       const message = typeof data === 'string' ? JSON.parse(data) : data;
 
       if (message.type === 'echo') {
@@ -88,28 +69,18 @@ class SocketIOServer {
       } else if (message.type === 'broadcast') {
         this.handleBroadcast(socket, message);
       } else {
-        // Unknown message type, echo it back
         socket.emit('message', message);
       }
     } catch (error) {
-      // Not JSON or parsing error, echo raw data back
       socket.emit('message', data);
     }
   }
 
-  /**
-   * Handle Echo test message
-   */
   handleEcho(socket, message) {
-    // Echo the message back to the sender
     socket.emit('message', message);
   }
 
-  /**
-   * Handle Broadcast test message
-   */
   handleBroadcast(sender, message) {
-    // Broadcast to all clients except the sender
     let broadcastCount = 0;
 
     this.clients.forEach((client, clientId) => {
@@ -122,9 +93,6 @@ class SocketIOServer {
     this.logger.log(`Broadcasted message ${message.id} to ${broadcastCount} clients`);
   }
 
-  /**
-   * Start tracking throughput (messages per second)
-   */
   startThroughputTracking() {
     let lastMessageCount = 0;
 
@@ -140,33 +108,22 @@ class SocketIOServer {
 
       this.throughputData.push(dataPoint);
       this.logger.appendThroughput('socketio', dataPoint.timestamp, dataPoint.messagesPerSecond, dataPoint.activeConnections);
-
-      if (messagesPerSecond > 0 || this.clients.size > 0) {
-        this.logger.log(`Throughput: ${messagesPerSecond} msg/s, Active connections: ${this.clients.size}`);
-      }
     }, 1000); // Track every second
   }
 
-  /**
-   * Stop the server gracefully
-   */
   stop() {
     this.logger.log('Shutting down server...');
 
-    // Clear intervals
     if (this.throughputInterval) {
       clearInterval(this.throughputInterval);
     }
 
-    // Close all client connections
     this.clients.forEach((socket) => {
       socket.disconnect(true);
     });
 
-    // Close Socket.IO server
     if (this.io) {
       this.io.close(() => {
-        // Close HTTP server
         if (this.httpServer) {
           this.httpServer.close(() => {
             this.logger.log('Server stopped');

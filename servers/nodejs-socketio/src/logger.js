@@ -29,6 +29,10 @@ class Logger {
 
   /**
    * Append throughput data to CSV
+   * @param {string} serverName - Server name
+   * @param {number} timestamp - Unix timestamp
+   * @param {number} messagesPerSecond - Messages processed per second
+   * @param {number} activeConnections - Number of active connections
    */
   appendThroughput(serverName, timestamp, messagesPerSecond, activeConnections) {
     const filename = `throughput_${serverName}.csv`;

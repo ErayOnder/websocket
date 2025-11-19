@@ -12,9 +12,6 @@ class WSServer {
     this.messageCount = 0;
     this.throughputInterval = null;
     this.throughputData = [];
-
-    // Broadcast tracking
-    this.broadcastInterval = null;
   }
 
   start() {
@@ -74,16 +71,10 @@ class WSServer {
     }
   }
 
-  /**
-   * Handle Echo test message
-   */
   handleEcho(ws, message) {
     ws.send(JSON.stringify(message));
   }
 
-  /**
-   * Handle Broadcast test message
-   */
   handleBroadcast(sender, message) {
     const broadcastData = JSON.stringify(message);
 
@@ -111,10 +102,6 @@ class WSServer {
 
       this.throughputData.push(dataPoint);
       this.logger.appendThroughput('ws', dataPoint.timestamp, dataPoint.messagesPerSecond, dataPoint.activeConnections);
-
-      if (messagesPerSecond > 0 || this.clients.size > 0) {
-        this.logger.log(`Throughput: ${messagesPerSecond} msg/s, Active connections: ${this.clients.size}`);
-      }
     }, 1000); // Track every second
   }
 
@@ -123,9 +110,6 @@ class WSServer {
 
     if (this.throughputInterval) {
       clearInterval(this.throughputInterval);
-    }
-    if (this.broadcastInterval) {
-      clearInterval(this.broadcastInterval);
     }
 
     this.clients.forEach(client => {
