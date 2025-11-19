@@ -238,3 +238,150 @@ class DataLoader:
             return pd.DataFrame()
 
         return pd.concat(all_data, ignore_index=True)
+
+    def load_reliability_data(self, library: str, client_count: int) -> pd.DataFrame:
+        """
+        Load reliability metrics data for a specific library and client count.
+
+        Args:
+            library: Library name (e.g., 'ws', 'socketio')
+            client_count: Number of clients
+
+        Returns:
+            DataFrame with columns: client_id, messages_sent, messages_received, messages_lost, loss_rate_percent, library, client_count
+        """
+        pattern = f"reliability_{library}_{client_count}clients.csv"
+        file_path = self.data_dir / pattern
+
+        if not file_path.exists():
+            return pd.DataFrame(columns=['client_id', 'messages_sent', 'messages_received', 'messages_lost', 'loss_rate_percent'])
+
+        df = pd.read_csv(file_path)
+        df['library'] = library
+        df['client_count'] = client_count
+        return df
+
+    def load_connection_stability_data(self, library: str, client_count: int) -> pd.DataFrame:
+        """
+        Load connection stability metrics data for a specific library and client count.
+
+        Args:
+            library: Library name (e.g., 'ws', 'socketio')
+            client_count: Number of clients
+
+        Returns:
+            DataFrame with columns: client_id, disconnect_count, library, client_count
+        """
+        pattern = f"connection_stability_{library}_{client_count}clients.csv"
+        file_path = self.data_dir / pattern
+
+        if not file_path.exists():
+            return pd.DataFrame(columns=['client_id', 'disconnect_count'])
+
+        df = pd.read_csv(file_path)
+        df['library'] = library
+        df['client_count'] = client_count
+        return df
+
+    def load_resource_data(self, server_name: str) -> pd.DataFrame:
+        """
+        Load server resource metrics data.
+
+        Args:
+            server_name: Server name (e.g., 'golang_gorilla', 'golang_coder', 'ws', 'socketio')
+
+        Returns:
+            DataFrame with resource metrics (columns vary by server type)
+        """
+        pattern = f"resources_{server_name}.csv"
+        file_path = self.data_dir / pattern
+
+        if not file_path.exists():
+            return pd.DataFrame()
+
+        df = pd.read_csv(file_path)
+        df['server'] = server_name
+
+        # Convert timestamp to datetime
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+        return df
+
+    def load_all_reliability_data(self, libraries: List[str] = None) -> pd.DataFrame:
+        """
+        Load all reliability metrics data across all libraries and client counts.
+
+        Args:
+            libraries: List of library names (None = all discovered libraries)
+
+        Returns:
+            Combined DataFrame with all reliability data
+        """
+        if libraries is None:
+            libraries = self.discover_libraries()
+
+        all_data = []
+
+        for library in libraries:
+            client_counts = self.discover_client_counts(library)
+            for count in client_counts:
+                df = self.load_reliability_data(library, count)
+                if not df.empty:
+                    all_data.append(df)
+
+        if not all_data:
+            return pd.DataFrame()
+
+        return pd.concat(all_data, ignore_index=True)
+
+    def load_all_stability_data(self, libraries: List[str] = None) -> pd.DataFrame:
+        """
+        Load all connection stability data across all libraries and client counts.
+
+        Args:
+            libraries: List of library names (None = all discovered libraries)
+
+        Returns:
+            Combined DataFrame with all connection stability data
+        """
+        if libraries is None:
+            libraries = self.discover_libraries()
+
+        all_data = []
+
+        for library in libraries:
+            client_counts = self.discover_client_counts(library)
+            for count in client_counts:
+                df = self.load_connection_stability_data(library, count)
+                if not df.empty:
+                    all_data.append(df)
+
+        if not all_data:
+            return pd.DataFrame()
+
+        return pd.concat(all_data, ignore_index=True)
+
+    def load_all_resource_data(self, servers: List[str] = None) -> pd.DataFrame:
+        """
+        Load all server resource metrics data.
+
+        Args:
+            servers: List of server names (None = all available servers)
+
+        Returns:
+            Combined DataFrame with all resource metrics
+        """
+        if servers is None:
+            servers = ['golang_gorilla', 'golang_coder', 'ws', 'socketio']
+
+        all_data = []
+
+        for server in servers:
+            df = self.load_resource_data(server)
+            if not df.empty:
+                all_data.append(df)
+
+        if not all_data:
+            return pd.DataFrame()
+
+        return pd.concat(all_data, ignore_index=True)

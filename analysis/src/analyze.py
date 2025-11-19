@@ -117,6 +117,18 @@ def main():
         throughput_data = pd.DataFrame()
         print(f"  No throughput data found")
 
+    print("Loading reliability data...")
+    reliability_data = loader.load_all_reliability_data(libraries)
+    print(f"  Loaded {len(reliability_data)} reliability measurements")
+
+    print("Loading connection stability data...")
+    stability_data = loader.load_all_stability_data(libraries)
+    print(f"  Loaded {len(stability_data)} stability measurements")
+
+    print("Loading server resource data...")
+    resource_data = loader.load_all_resource_data()
+    print(f"  Loaded {len(resource_data)} resource measurements")
+
     print()
 
     # Calculate statistics
@@ -134,9 +146,19 @@ def main():
     print("  Aggregating throughput statistics...")
     throughput_stats = stats_calc.aggregate_throughput_stats(throughput_data)
 
+    print("  Aggregating reliability statistics...")
+    reliability_stats = stats_calc.aggregate_reliability_stats(reliability_data)
+
+    print("  Aggregating stability statistics...")
+    stability_stats = stats_calc.aggregate_stability_stats(stability_data)
+
+    print("  Aggregating resource statistics...")
+    resource_stats = stats_calc.aggregate_resource_stats(resource_data)
+
     print("  Creating summary table...")
     summary_table = stats_calc.create_summary_table(
-        rtt_stats, conn_stats, broadcast_stats, throughput_stats
+        rtt_stats, conn_stats, broadcast_stats, throughput_stats,
+        reliability_stats, stability_stats
     )
 
     print()
@@ -164,6 +186,21 @@ def main():
             throughput_path = output_dir / 'throughput_statistics.csv'
             throughput_stats.to_csv(throughput_path, index=False)
             print(f"  Saved throughput statistics to: {throughput_path}")
+
+        if not reliability_stats.empty:
+            reliability_path = output_dir / 'reliability_statistics.csv'
+            reliability_stats.to_csv(reliability_path, index=False)
+            print(f"  Saved reliability statistics to: {reliability_path}")
+
+        if not stability_stats.empty:
+            stability_path = output_dir / 'stability_statistics.csv'
+            stability_stats.to_csv(stability_path, index=False)
+            print(f"  Saved stability statistics to: {stability_path}")
+
+        if not resource_stats.empty:
+            resource_path = output_dir / 'resource_statistics.csv'
+            resource_stats.to_csv(resource_path, index=False)
+            print(f"  Saved resource statistics to: {resource_path}")
 
         if not summary_table.empty:
             summary_path = output_dir / 'summary_table.csv'
@@ -200,6 +237,18 @@ def main():
         if not throughput_stats.empty:
             print("  Creating throughput comparison chart...")
             visualizer.plot_throughput_comparison(throughput_stats)
+
+        if not reliability_stats.empty:
+            print("  Creating message loss trends chart...")
+            visualizer.plot_message_loss_trends(reliability_stats)
+
+        if not stability_stats.empty:
+            print("  Creating connection stability chart...")
+            visualizer.plot_connection_stability(stability_stats)
+
+        if not resource_stats.empty:
+            print("  Creating resource usage chart...")
+            visualizer.plot_resource_usage(resource_stats)
 
         if not summary_table.empty:
             print("  Creating all metrics comparison chart...")

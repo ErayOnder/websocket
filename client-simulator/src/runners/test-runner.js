@@ -166,9 +166,24 @@ class TestRunner {
 
       this.logger.log(`Overall RTT Statistics: Mean=${stats.mean}ms, Median=${stats.median}ms, Min=${stats.min}ms, Max=${stats.max}ms, Count=${stats.count}`);
 
+      // Collect reliability metrics from echo tests
+      const reliabilityData = [];
+      echoTests.forEach(test => {
+        reliabilityData.push(test.getReliabilityMetrics());
+      });
+
+      // Collect connection stability metrics from clients
+      const stabilityData = [];
+      connectedClients.forEach(client => {
+        const stability = client.getConnectionStabilityMetrics();
+        stabilityData.push(stability);
+      });
+
       // Write to CSV
       this.logger.writeRTT(this.config.libraryName, numClients, allRTTData);
       this.logger.writeConnectionTime(this.config.libraryName, numClients, connectionData);
+      this.logger.writeReliabilityMetrics(this.config.libraryName, numClients, reliabilityData);
+      this.logger.writeConnectionStability(this.config.libraryName, numClients, stabilityData);
 
       // Close all connected clients
       connectedClients.forEach(client => client.close());
@@ -318,9 +333,17 @@ class TestRunner {
       this.logger.log(`Overall Broadcast Latency: Mean=${stats.mean}ms, Median=${stats.median}ms, Min=${stats.min}ms, Max=${stats.max}ms`);
       this.logger.log(`Total broadcasts: ${stats.broadcastCount}, Total messages received: ${stats.count}`);
 
+      // Collect connection stability metrics from clients
+      const stabilityData = [];
+      connectedClients.forEach(client => {
+        const stability = client.getConnectionStabilityMetrics();
+        stabilityData.push(stability);
+      });
+
       // Write to CSV
       this.logger.writeBroadcastLatency(this.config.libraryName, numClients, broadcastTest.getLatencyData());
       this.logger.writeConnectionTime(this.config.libraryName, numClients, connectionData);
+      this.logger.writeConnectionStability(this.config.libraryName, numClients, stabilityData);
 
       // Close all connected clients
       connectedClients.forEach(client => client.close());
