@@ -192,6 +192,7 @@ func (s *Server) trackThroughput() {
 
 			s.logger.Log(fmt.Sprintf("Throughput: %d msg/s, Active connections: %d", messagesPerSecond, activeConnections))
 			s.logger.AppendThroughput(messagesPerSecond, activeConnections)
+			s.logger.AppendResourceMetrics()
 
 		case <-s.shutdownChan:
 			return

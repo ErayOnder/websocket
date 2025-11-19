@@ -108,6 +108,7 @@ class SocketIOServer {
 
       this.throughputData.push(dataPoint);
       this.logger.appendThroughput('socketio', dataPoint.timestamp, dataPoint.messagesPerSecond, dataPoint.activeConnections);
+      this.logger.appendResourceMetrics('socketio', dataPoint.timestamp);
     }, 1000); // Track every second
   }
 

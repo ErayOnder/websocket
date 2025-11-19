@@ -76,6 +76,7 @@ func (s *Server) Start() error {
 	fmt.Println("  - Broadcast: {\"type\": \"broadcast\", \"id\": 1, \"timestamp\": ...}")
 	fmt.Println()
 	fmt.Printf("Throughput metrics logged to: data/raw/throughput_golang_gorilla.csv\n")
+	fmt.Printf("Resource metrics logged to: data/raw/resources_golang_gorilla.csv\n")
 	fmt.Println("Press Ctrl+C to stop")
 	fmt.Println("============================================================")
 	fmt.Println()
@@ -221,6 +222,7 @@ func (s *Server) startThroughputTracking() {
 				s.logger.Log(fmt.Sprintf("Throughput: %d msg/s, Active connections: %d",
 					messagesPerSecond, activeConnections))
 				s.logger.AppendThroughput(messagesPerSecond, activeConnections)
+				s.logger.AppendResourceMetrics()
 
 			case <-s.shutdownChan:
 				return
