@@ -331,12 +331,15 @@ class StatisticsCalculator:
                 summary['memory_sys_mb_max'] = server_df['memory_sys_mb'].max()
                 summary['gc_count_total'] = server_df['gc_count'].max() - server_df['gc_count'].min()
 
-            # Node.js servers have: cpu_user_ms, cpu_system_ms, memory_rss_mb, memory_heap_used_mb, etc.
+            # Node.js servers have: cpu_user_ms, cpu_system_ms, cpu_percent, memory_rss_mb, memory_heap_used_mb, etc.
             if 'cpu_user_ms' in server_df.columns:
                 summary['cpu_user_ms_mean'] = server_df['cpu_user_ms'].mean()
                 summary['cpu_user_ms_max'] = server_df['cpu_user_ms'].max()
                 summary['cpu_system_ms_mean'] = server_df['cpu_system_ms'].mean()
                 summary['cpu_system_ms_max'] = server_df['cpu_system_ms'].max()
+                if 'cpu_percent' in server_df.columns:
+                    summary['cpu_percent_mean'] = server_df['cpu_percent'].mean()
+                    summary['cpu_percent_max'] = server_df['cpu_percent'].max()
                 summary['memory_rss_mb_mean'] = server_df['memory_rss_mb'].mean()
                 summary['memory_rss_mb_max'] = server_df['memory_rss_mb'].max()
                 summary['memory_heap_used_mb_mean'] = server_df['memory_heap_used_mb'].mean()
@@ -345,3 +348,117 @@ class StatisticsCalculator:
             summaries.append(summary)
 
         return pd.DataFrame(summaries)
+
+    def calculate_performance_degradation(self, rtt_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate performance degradation as client count increases.
+
+        Args:
+            df: DataFrame with columns: library, client_count, mean (RTT mean)
+
+        Returns:
+            DataFrame with degradation metrics per library
+        """
+        if rtt_df.empty:
+            return pd.DataFrame()
+
+        degradation_results = []
+
+        for library in rtt_df['library'].unique():
+            lib_df = rtt_df[rtt_df['library'] == library].sort_values('client_count')
+
+            if len(lib_df) < 2:
+                continue
+
+            # Get baseline (lowest client count)
+            baseline_count = lib_df['client_count'].min()
+            baseline_rtt = lib_df[lib_df['client_count'] == baseline_count]['mean'].iloc[0]
+
+            # Get peak load (highest client count)
+            peak_count = lib_df['client_count'].max()
+            peak_rtt = lib_df[lib_df['client_count'] == peak_count]['mean'].iloc[0]
+
+            # Calculate degradation metrics
+            degradation_pct = ((peak_rtt - baseline_rtt) / baseline_rtt * 100) if baseline_rtt > 0 else 0
+            degradation_per_100_clients = degradation_pct / ((peak_count - baseline_count) / 100) if peak_count > baseline_count else 0
+
+            degradation_results.append({
+                'library': library,
+                'baseline_clients': baseline_count,
+                'baseline_rtt_ms': round(baseline_rtt, 2),
+                'peak_clients': peak_count,
+                'peak_rtt_ms': round(peak_rtt, 2),
+                'total_degradation_pct': round(degradation_pct, 2),
+                'degradation_per_100_clients_pct': round(degradation_per_100_clients, 2)
+            })
+
+        return pd.DataFrame(degradation_results)
+
+    def detect_memory_leaks(self, resource_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Detect potential memory leaks using linear regression on memory usage over time.
+
+        Args:
+            resource_df: DataFrame with timestamp and memory metrics
+
+        Returns:
+            DataFrame with leak detection results per server
+        """
+        if resource_df.empty:
+            return pd.DataFrame()
+
+        from scipy import stats as scipy_stats
+
+        leak_results = []
+
+        for server in resource_df['server'].unique():
+            server_df = resource_df[resource_df['server'] == server].sort_values('timestamp')
+
+            if len(server_df) < 10:  # Need at least 10 data points
+                continue
+
+            # Create time index (seconds since start)
+            server_df['time_index'] = (server_df['timestamp'] - server_df['timestamp'].min()).dt.total_seconds()
+
+            # Detect leak for different memory metrics
+            memory_cols = []
+            if 'memory_alloc_mb' in server_df.columns:
+                memory_cols.append(('memory_alloc_mb', 'Memory Alloc (MB)'))
+            if 'memory_sys_mb' in server_df.columns:
+                memory_cols.append(('memory_sys_mb', 'Memory Sys (MB)'))
+            if 'memory_rss_mb' in server_df.columns:
+                memory_cols.append(('memory_rss_mb', 'Memory RSS (MB)'))
+            if 'memory_heap_used_mb' in server_df.columns:
+                memory_cols.append(('memory_heap_used_mb', 'Memory Heap Used (MB)'))
+
+            for mem_col, mem_name in memory_cols:
+                # Linear regression: memory = slope * time + intercept
+                slope, intercept, r_value, p_value, std_err = scipy_stats.linregress(
+                    server_df['time_index'],
+                    server_df[mem_col]
+                )
+
+                # Memory growth rate (MB per hour)
+                growth_rate_per_hour = slope * 3600
+
+                # Determine if leak is likely
+                # Criteria: positive slope, high R² (good fit), statistically significant (p < 0.05)
+                is_leak_likely = (
+                    slope > 0.01 and  # Growing by more than 0.01 MB/sec
+                    r_value ** 2 > 0.7 and  # Good linear fit
+                    p_value < 0.05  # Statistically significant
+                )
+
+                leak_results.append({
+                    'server': server,
+                    'metric': mem_name,
+                    'growth_rate_mb_per_hour': round(growth_rate_per_hour, 4),
+                    'r_squared': round(r_value ** 2, 4),
+                    'p_value': round(p_value, 4),
+                    'leak_detected': is_leak_likely,
+                    'start_memory_mb': round(server_df[mem_col].iloc[0], 2),
+                    'end_memory_mb': round(server_df[mem_col].iloc[-1], 2),
+                    'total_growth_mb': round(server_df[mem_col].iloc[-1] - server_df[mem_col].iloc[0], 2)
+                })
+
+        return pd.DataFrame(leak_results)

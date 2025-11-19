@@ -155,6 +155,12 @@ def main():
     print("  Aggregating resource statistics...")
     resource_stats = stats_calc.aggregate_resource_stats(resource_data)
 
+    print("  Calculating performance degradation...")
+    degradation_stats = stats_calc.calculate_performance_degradation(rtt_stats)
+
+    print("  Detecting memory leaks...")
+    leak_detection = stats_calc.detect_memory_leaks(resource_data)
+
     print("  Creating summary table...")
     summary_table = stats_calc.create_summary_table(
         rtt_stats, conn_stats, broadcast_stats, throughput_stats,
@@ -201,6 +207,16 @@ def main():
             resource_path = output_dir / 'resource_statistics.csv'
             resource_stats.to_csv(resource_path, index=False)
             print(f"  Saved resource statistics to: {resource_path}")
+
+        if not degradation_stats.empty:
+            degradation_path = output_dir / 'performance_degradation.csv'
+            degradation_stats.to_csv(degradation_path, index=False)
+            print(f"  Saved performance degradation analysis to: {degradation_path}")
+
+        if not leak_detection.empty:
+            leak_path = output_dir / 'memory_leak_detection.csv'
+            leak_detection.to_csv(leak_path, index=False)
+            print(f"  Saved memory leak detection to: {leak_path}")
 
         if not summary_table.empty:
             summary_path = output_dir / 'summary_table.csv'
@@ -249,6 +265,18 @@ def main():
         if not resource_stats.empty:
             print("  Creating resource usage chart...")
             visualizer.plot_resource_usage(resource_stats)
+
+        if not degradation_stats.empty:
+            print("  Creating performance degradation chart...")
+            visualizer.plot_performance_degradation(degradation_stats)
+
+        if not leak_detection.empty:
+            print("  Creating memory leak analysis chart...")
+            visualizer.plot_memory_leak_analysis(leak_detection)
+
+        if not resource_data.empty and 'cpu_percent' in resource_data.columns:
+            print("  Creating CPU utilization chart...")
+            visualizer.plot_cpu_utilization(resource_data)
 
         if not summary_table.empty:
             print("  Creating all metrics comparison chart...")

@@ -511,3 +511,166 @@ class Visualizer:
         plt.savefig(save_path, bbox_inches='tight')
         print(f"Saved resource usage chart to: {save_path}")
         plt.close()
+
+    def plot_performance_degradation(self, degradation_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
+        """
+        Create chart showing performance degradation as client count increases.
+
+        Args:
+            degradation_df: DataFrame with degradation metrics
+            save_path: Path to save the figure
+        """
+        if degradation_df.empty:
+            print("Warning: No degradation data to plot")
+            return
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+        libraries = degradation_df['library'].tolist()
+        x = np.arange(len(libraries))
+        width = 0.6
+
+        # Plot 1: Total degradation percentage
+        colors_list = self.colors[:len(libraries)]
+        ax1.bar(x, degradation_df['total_degradation_pct'], width, color=colors_list, alpha=0.8)
+        ax1.set_xlabel('Library', fontsize=12)
+        ax1.set_ylabel('Total Degradation (%)', fontsize=12)
+        ax1.set_title('Performance Degradation (Baseline to Peak Load)', fontsize=14, fontweight='bold')
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(libraries, rotation=45, ha='right')
+        ax1.grid(True, alpha=0.3, axis='y')
+
+        # Add value labels on bars
+        for i, v in enumerate(degradation_df['total_degradation_pct']):
+            ax1.text(i, v + 1, f'{v:.1f}%', ha='center', va='bottom', fontsize=10)
+
+        # Plot 2: Degradation per 100 clients
+        ax2.bar(x, degradation_df['degradation_per_100_clients_pct'], width, color=colors_list, alpha=0.8)
+        ax2.set_xlabel('Library', fontsize=12)
+        ax2.set_ylabel('Degradation per 100 Clients (%)', fontsize=12)
+        ax2.set_title('Degradation Rate (% per 100 Clients)', fontsize=14, fontweight='bold')
+        ax2.set_xticks(x)
+        ax2.set_xticklabels(libraries, rotation=45, ha='right')
+        ax2.grid(True, alpha=0.3, axis='y')
+
+        # Add value labels on bars
+        for i, v in enumerate(degradation_df['degradation_per_100_clients_pct']):
+            ax2.text(i, v + 0.5, f'{v:.1f}%', ha='center', va='bottom', fontsize=10)
+
+        plt.suptitle('Performance Degradation Under Load', fontsize=16, fontweight='bold')
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'performance_degradation.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved performance degradation chart to: {save_path}")
+        plt.close()
+
+    def plot_memory_leak_analysis(self, leak_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
+        """
+        Create chart showing memory leak detection results.
+
+        Args:
+            leak_df: DataFrame with memory leak detection results
+            save_path: Path to save the figure
+        """
+        if leak_df.empty:
+            print("Warning: No memory leak data to plot")
+            return
+
+        # Filter to show only primary memory metrics (avoid duplication)
+        primary_metrics = leak_df[leak_df['metric'].isin(['Memory Alloc (MB)', 'Memory Heap Used (MB)', 'Memory RSS (MB)'])]
+
+        if primary_metrics.empty:
+            primary_metrics = leak_df  # Use all if no primary metrics found
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Plot 1: Memory growth rate
+        servers = primary_metrics['server'].tolist()
+        x = np.arange(len(servers))
+        width = 0.6
+
+        colors = [self.colors[0] if leak else self.colors[2] for leak in primary_metrics['leak_detected']]
+        ax1.bar(x, primary_metrics['growth_rate_mb_per_hour'], width, color=colors, alpha=0.8)
+        ax1.set_xlabel('Server', fontsize=12)
+        ax1.set_ylabel('Memory Growth (MB/hour)', fontsize=12)
+        ax1.set_title('Memory Growth Rate', fontsize=14, fontweight='bold')
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(servers, rotation=45, ha='right', fontsize=9)
+        ax1.grid(True, alpha=0.3, axis='y')
+        ax1.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
+
+        # Add legend
+        from matplotlib.patches import Patch
+        legend_elements = [Patch(facecolor=self.colors[0], alpha=0.8, label='Leak Detected'),
+                          Patch(facecolor=self.colors[2], alpha=0.8, label='No Leak')]
+        ax1.legend(handles=legend_elements, loc='upper right')
+
+        # Plot 2: R² values (fit quality)
+        ax2.bar(x, primary_metrics['r_squared'], width, color=colors, alpha=0.8)
+        ax2.set_xlabel('Server', fontsize=12)
+        ax2.set_ylabel('R² (Linear Fit Quality)', fontsize=12)
+        ax2.set_title('Memory Growth Linearity', fontsize=14, fontweight='bold')
+        ax2.set_xticks(x)
+        ax2.set_xticklabels(servers, rotation=45, ha='right', fontsize=9)
+        ax2.grid(True, alpha=0.3, axis='y')
+        ax2.set_ylim(0, 1.0)
+
+        # Add threshold line
+        ax2.axhline(y=0.7, color='red', linestyle='--', linewidth=1, alpha=0.7, label='Leak Threshold')
+        ax2.legend()
+
+        plt.suptitle('Memory Leak Detection Analysis', fontsize=16, fontweight='bold')
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'memory_leak_analysis.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved memory leak analysis chart to: {save_path}")
+        plt.close()
+
+    def plot_cpu_utilization(self, resource_data: pd.DataFrame, save_path: Optional[str] = None) -> None:
+        """
+        Create chart showing CPU utilization over time.
+
+        Args:
+            resource_data: DataFrame with timestamp and cpu_percent
+            save_path: Path to save the figure
+        """
+        if resource_data.empty or 'cpu_percent' not in resource_data.columns:
+            print("Warning: No CPU utilization data to plot")
+            return
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        for idx, server in enumerate(resource_data['server'].unique()):
+            server_df = resource_data[resource_data['server'] == server].sort_values('timestamp')
+
+            if server_df.empty:
+                continue
+
+            # Convert timestamp to relative time in minutes
+            server_df['time_minutes'] = (server_df['timestamp'] - server_df['timestamp'].min()).dt.total_seconds() / 60
+
+            color = self.colors[idx % len(self.colors)]
+            ax.plot(server_df['time_minutes'], server_df['cpu_percent'],
+                   label=server, color=color, linewidth=2, alpha=0.8)
+
+        ax.set_xlabel('Time (minutes)', fontsize=12)
+        ax.set_ylabel('CPU Utilization (%)', fontsize=12)
+        ax.set_title('CPU Utilization Over Time', fontsize=14, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(bottom=0)
+
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'cpu_utilization_trends.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved CPU utilization chart to: {save_path}")
+        plt.close()
