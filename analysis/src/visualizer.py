@@ -674,3 +674,326 @@ class Visualizer:
         plt.savefig(save_path, bbox_inches='tight')
         print(f"Saved CPU utilization chart to: {save_path}")
         plt.close()
+
+    def plot_load_test_progressive_degradation(self, degradation_data: dict, save_path: Optional[str] = None) -> None:
+        """
+        Create chart showing progressive performance degradation during load test.
+
+        Args:
+            degradation_data: Dictionary mapping library names to degradation DataFrames
+            save_path: Path to save the figure
+        """
+        if not degradation_data:
+            print("Warning: No load test degradation data to plot")
+            return
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+
+        # Plot 1: RTT P95 vs Client Count
+        ax = axes[0, 0]
+        for idx, (library, df) in enumerate(degradation_data.items()):
+            color = self.colors[idx % len(self.colors)]
+            ax.plot(df['client_count'], df['rtt_p95'], marker='o', label=library,
+                   color=color, linewidth=2, alpha=0.8)
+
+        ax.set_xlabel('Client Count', fontsize=12)
+        ax.set_ylabel('RTT P95 (ms)', fontsize=12)
+        ax.set_title('Latency Degradation Under Load', fontsize=14, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Plot 2: Message Loss Rate vs Client Count
+        ax = axes[0, 1]
+        for idx, (library, df) in enumerate(degradation_data.items()):
+            color = self.colors[idx % len(self.colors)]
+            ax.plot(df['client_count'], df['message_loss_rate'], marker='s', label=library,
+                   color=color, linewidth=2, alpha=0.8)
+
+        ax.set_xlabel('Client Count', fontsize=12)
+        ax.set_ylabel('Message Loss Rate (%)', fontsize=12)
+        ax.set_title('Message Loss Under Load', fontsize=14, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Plot 3: CPU Utilization vs Client Count (if available)
+        ax = axes[1, 0]
+        has_cpu_data = False
+        for idx, (library, df) in enumerate(degradation_data.items()):
+            if 'cpu_percent' in df.columns and df['cpu_percent'].notna().any():
+                color = self.colors[idx % len(self.colors)]
+                ax.plot(df['client_count'], df['cpu_percent'], marker='^', label=library,
+                       color=color, linewidth=2, alpha=0.8)
+                has_cpu_data = True
+
+        if has_cpu_data:
+            ax.set_xlabel('Client Count', fontsize=12)
+            ax.set_ylabel('CPU Utilization (%)', fontsize=12)
+            ax.set_title('CPU Usage Under Load', fontsize=14, fontweight='bold')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+        else:
+            ax.text(0.5, 0.5, 'No CPU data available', ha='center', va='center',
+                   fontsize=14, transform=ax.transAxes)
+            ax.axis('off')
+
+        # Plot 4: Memory Usage vs Client Count (if available)
+        ax = axes[1, 1]
+        has_memory_data = False
+        for idx, (library, df) in enumerate(degradation_data.items()):
+            if 'memory_mb' in df.columns and df['memory_mb'].notna().any():
+                color = self.colors[idx % len(self.colors)]
+                ax.plot(df['client_count'], df['memory_mb'], marker='d', label=library,
+                       color=color, linewidth=2, alpha=0.8)
+                has_memory_data = True
+
+        if has_memory_data:
+            ax.set_xlabel('Client Count', fontsize=12)
+            ax.set_ylabel('Memory Usage (MB)', fontsize=12)
+            ax.set_title('Memory Usage Under Load', fontsize=14, fontweight='bold')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+        else:
+            ax.text(0.5, 0.5, 'No memory data available', ha='center', va='center',
+                   fontsize=14, transform=ax.transAxes)
+            ax.axis('off')
+
+        plt.suptitle('Progressive Performance Degradation', fontsize=16, fontweight='bold')
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'load_test_progressive_degradation.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved load test progressive degradation chart to: {save_path}")
+        plt.close()
+
+    def plot_load_test_max_capacity(self, summary_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
+        """
+        Create chart showing maximum capacity comparison across libraries.
+
+        Args:
+            summary_df: DataFrame with load test summary data
+            save_path: Path to save the figure
+        """
+        if summary_df.empty:
+            print("Warning: No load test summary data to plot")
+            return
+
+        fig, ax = plt.subplots(figsize=(12, 7))
+
+        libraries = summary_df['library'].tolist()
+        x = np.arange(len(libraries))
+        width = 0.35
+
+        # Create bars for max healthy and max total
+        bars1 = ax.bar(x - width/2, summary_df['max_healthy_clients'], width,
+                      label='Max Healthy Clients', color=self.colors[2], alpha=0.8)
+        bars2 = ax.bar(x + width/2, summary_df['max_total_clients'], width,
+                      label='Max Total Clients', color=self.colors[0], alpha=0.6)
+
+        ax.set_xlabel('Library', fontsize=12)
+        ax.set_ylabel('Client Count', fontsize=12)
+        ax.set_title('Maximum Client Capacity Comparison', fontsize=14, fontweight='bold')
+        ax.set_xticks(x)
+        ax.set_xticklabels(libraries, rotation=45, ha='right')
+        ax.legend()
+        ax.grid(True, alpha=0.3, axis='y')
+
+        # Add value labels on bars
+        for bar in bars1:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                   f'{int(height)}', ha='center', va='bottom', fontsize=9)
+
+        # Add failure reason annotations
+        for i, (lib, reason) in enumerate(zip(libraries, summary_df['failure_reason'])):
+            reason_short = reason.replace('_', ' ').title()[:20]
+            ax.text(i, 5, reason_short, ha='center', va='bottom',
+                   fontsize=8, rotation=90, alpha=0.7)
+
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'load_test_max_capacity.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved load test max capacity chart to: {save_path}")
+        plt.close()
+
+    def plot_load_test_health_timeline(self, csv_path, save_path: Optional[str] = None) -> None:
+        """
+        Create chart showing health status timeline for a single load test.
+
+        Args:
+            csv_path: Path to load test CSV file
+            save_path: Path to save the figure
+        """
+        import pandas as pd
+
+        df = pd.read_csv(csv_path)
+
+        if df.empty:
+            print("Warning: No load test data to plot")
+            return
+
+        # Extract library name from filename
+        from pathlib import Path
+        filename = Path(csv_path).stem
+        library = '_'.join(filename.split('_')[2:-1])
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
+
+        # Map health status to numeric values for coloring
+        health_map = {'GREEN': 0, 'YELLOW': 1, 'RED': 2}
+        df['health_numeric'] = df['health_status'].map(health_map)
+
+        # Plot 1: Client count with health status coloring
+        colors_map = {0: self.colors[2], 1: '#FFA500', 2: self.colors[0]}  # Green, Orange, Red
+        for status, color_idx in health_map.items():
+            status_df = df[df['health_status'] == status]
+            if not status_df.empty:
+                ax1.scatter(range(len(df))[df['health_status'] == status],
+                          status_df['client_count'],
+                          c=[colors_map[color_idx]] * len(status_df),
+                          label=status, s=100, alpha=0.7, edgecolors='black', linewidths=0.5)
+
+        ax1.plot(range(len(df)), df['client_count'], 'k--', alpha=0.3, linewidth=1)
+        ax1.set_ylabel('Client Count', fontsize=12)
+        ax1.set_title(f'Load Test Health Timeline - {library}', fontsize=14, fontweight='bold')
+        ax1.legend(title='Health Status')
+        ax1.grid(True, alpha=0.3)
+
+        # Plot 2: RTT P95 with threshold line
+        ax2.plot(range(len(df)), df['rtt_p95'], marker='o', color=self.colors[3],
+                linewidth=2, label='RTT P95')
+        ax2.axhline(y=500, color='red', linestyle='--', linewidth=1, alpha=0.7, label='P95 Threshold (500ms)')
+        ax2.set_xlabel('Test Step', fontsize=12)
+        ax2.set_ylabel('RTT P95 (ms)', fontsize=12)
+        ax2.set_title('Latency Evolution', fontsize=12, fontweight='bold')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / f'load_test_health_timeline_{library}.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved load test health timeline chart to: {save_path}")
+        plt.close()
+
+    def plot_load_test_resource_efficiency(self, efficiency_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
+        """
+        Create chart showing resource efficiency comparison.
+
+        Args:
+            efficiency_df: DataFrame with resource efficiency metrics
+            save_path: Path to save the figure
+        """
+        if efficiency_df.empty:
+            print("Warning: No efficiency data to plot")
+            return
+
+        fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+
+        libraries = efficiency_df['library'].tolist()
+        x = np.arange(len(libraries))
+        width = 0.6
+
+        # Plot 1: CPU per client
+        ax = axes[0]
+        if 'cpu_percent_per_client' in efficiency_df.columns:
+            cpu_data = efficiency_df['cpu_percent_per_client'].fillna(0)
+            bars = ax.bar(x, cpu_data, width, color=self.colors[:len(libraries)], alpha=0.8)
+            ax.set_ylabel('CPU % per Client', fontsize=12)
+            ax.set_title('CPU Efficiency', fontsize=14, fontweight='bold')
+
+            for i, v in enumerate(cpu_data):
+                if v > 0:
+                    ax.text(i, v, f'{v:.4f}', ha='center', va='bottom', fontsize=9)
+        else:
+            ax.text(0.5, 0.5, 'No CPU data', ha='center', va='center', transform=ax.transAxes)
+            ax.axis('off')
+
+        # Plot 2: Memory per client
+        ax = axes[1]
+        if 'memory_mb_per_client' in efficiency_df.columns:
+            mem_data = efficiency_df['memory_mb_per_client'].fillna(0)
+            bars = ax.bar(x, mem_data, width, color=self.colors[:len(libraries)], alpha=0.8)
+            ax.set_ylabel('Memory (MB) per Client', fontsize=12)
+            ax.set_title('Memory Efficiency', fontsize=14, fontweight='bold')
+
+            for i, v in enumerate(mem_data):
+                if v > 0:
+                    ax.text(i, v, f'{v:.4f}', ha='center', va='bottom', fontsize=9)
+        else:
+            ax.text(0.5, 0.5, 'No memory data', ha='center', va='center', transform=ax.transAxes)
+            ax.axis('off')
+
+        # Plot 3: Throughput per client
+        ax = axes[2]
+        if 'throughput_per_client' in efficiency_df.columns:
+            throughput_data = efficiency_df['throughput_per_client']
+            bars = ax.bar(x, throughput_data, width, color=self.colors[:len(libraries)], alpha=0.8)
+            ax.set_ylabel('Messages/sec per Client', fontsize=12)
+            ax.set_title('Throughput Efficiency', fontsize=14, fontweight='bold')
+
+            for i, v in enumerate(throughput_data):
+                ax.text(i, v, f'{v:.2f}', ha='center', va='bottom', fontsize=9)
+
+        # Set x-axis labels for all plots
+        for ax in axes:
+            if ax.get_visible():
+                ax.set_xticks(x)
+                ax.set_xticklabels(libraries, rotation=45, ha='right', fontsize=10)
+                ax.grid(True, alpha=0.3, axis='y')
+
+        plt.suptitle('Resource Efficiency Comparison', fontsize=16, fontweight='bold')
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'load_test_resource_efficiency.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved load test resource efficiency chart to: {save_path}")
+        plt.close()
+
+    def plot_load_test_failure_modes(self, failure_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
+        """
+        Create pie chart showing distribution of failure modes.
+
+        Args:
+            failure_df: DataFrame with failure mode distribution
+            save_path: Path to save the figure
+        """
+        if failure_df.empty:
+            print("Warning: No failure mode data to plot")
+            return
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        # Create pie chart
+        wedges, texts, autotexts = ax.pie(
+            failure_df['count'],
+            labels=[reason.replace('_', ' ').title() for reason in failure_df['failure_reason']],
+            autopct='%1.1f%%',
+            colors=self.colors[:len(failure_df)],
+            startangle=90,
+            textprops={'fontsize': 11}
+        )
+
+        # Make percentage text bold
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
+
+        ax.set_title('Load Test Failure Mode Distribution', fontsize=14, fontweight='bold', pad=20)
+
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'load_test_failure_modes.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved load test failure modes chart to: {save_path}")
+        plt.close()
