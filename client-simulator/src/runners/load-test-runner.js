@@ -10,6 +10,10 @@ class LoadTestRunner extends TestRunner {
     }
   }
 
+  getFileTypes() {
+    return ['rtt', 'connection_time', 'reliability', 'connection_stability'];
+  }
+
   logTestStart(loadPhases, iterations) {
     this.logger.log('Starting Progressive Load Test');
     this.logger.log(`Load phases: ${loadPhases.join(', ')}`);

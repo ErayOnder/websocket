@@ -31,39 +31,20 @@ class Logger {
    * Clear CSV files for a specific server and client counts before starting a new phased test
    * @param {string} serverName - Server name (e.g., 'ws', 'socketio')
    * @param {Array<number>} clientCounts - Array of client counts to clear data for
+   * @param {Array<string>} fileTypes - Array of file types to clear (e.g., ['rtt', 'reliability'])
    */
-  clearPhasedTestData(serverName, clientCounts) {
+  clearPhasedTestData(serverName, clientCounts, fileTypes) {
     let filesDeleted = 0;
 
     for (const numClients of clientCounts) {
-      const rttFile = path.join(this.dataDir, `rtt_${serverName}_${numClients}clients.csv`);
-      if (fs.existsSync(rttFile)) {
-        fs.unlinkSync(rttFile);
-        filesDeleted++;
-      }
-
-      const connFile = path.join(this.dataDir, `connection_time_${serverName}_${numClients}clients.csv`);
-      if (fs.existsSync(connFile)) {
-        fs.unlinkSync(connFile);
-        filesDeleted++;
-      }
-
-      const broadcastFile = path.join(this.dataDir, `broadcast_latency_${serverName}_${numClients}clients.csv`);
-      if (fs.existsSync(broadcastFile)) {
-        fs.unlinkSync(broadcastFile);
-        filesDeleted++;
-      }
-
-      const reliabilityFile = path.join(this.dataDir, `reliability_${serverName}_${numClients}clients.csv`);
-      if (fs.existsSync(reliabilityFile)) {
-        fs.unlinkSync(reliabilityFile);
-        filesDeleted++;
-      }
-
-      const stabilityFile = path.join(this.dataDir, `connection_stability_${serverName}_${numClients}clients.csv`);
-      if (fs.existsSync(stabilityFile)) {
-        fs.unlinkSync(stabilityFile);
-        filesDeleted++;
+      for (const fileType of fileTypes) {
+        const filename = `${fileType}_${serverName}_${numClients}clients.csv`;
+        const filepath = path.join(this.dataDir, filename);
+        
+        if (fs.existsSync(filepath)) {
+          fs.unlinkSync(filepath);
+          filesDeleted++;
+        }
       }
     }
   }

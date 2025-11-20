@@ -24,6 +24,10 @@ class TestRunner {
     }
   }
 
+  getFileTypes() {
+    return [];
+  }
+
   /**
    * Run test across all load phases
    * @param {Array<number>} loadPhases - Array of client counts
@@ -32,7 +36,7 @@ class TestRunner {
    */
   async runPhased(loadPhases, iterations = 3) {
     this.logTestStart(loadPhases, iterations);
-    this.logger.clearPhasedTestData(this.config.serverName, loadPhases);
+    this.logger.clearPhasedTestData(this.config.serverName, loadPhases, this.getFileTypes());
 
     const results = [];
     for (const numClients of loadPhases) {

@@ -9,6 +9,10 @@ class BroadcastTestRunner extends TestRunner {
     }
   }
 
+  getFileTypes() {
+    return ['broadcast_latency'];
+  }
+
   logTestStart(loadPhases, iterations) {
     this.logger.log('Starting Phased Broadcast Test');
     this.logger.log(`Load phases: ${loadPhases.join(', ')}`);
@@ -28,12 +32,10 @@ class BroadcastTestRunner extends TestRunner {
     const clients = this.createClients(numClients);
 
     try {
-      const { connectedClients, connectionData, failedConnections } = await this.connectClients(clients);
-      const { stats, clientStats, latencyData, stabilityData } = await this.runBroadcastTests(connectedClients);
+      const { connectedClients, failedConnections } = await this.connectClients(clients);
+      const { stats, clientStats, latencyData } = await this.runBroadcastTests(connectedClients);
 
       this.logger.writeBroadcastLatency(this.config.serverName, numClients, latencyData);
-      this.logger.writeConnectionTime(this.config.serverName, numClients, connectionData);
-      this.logger.writeConnectionStability(this.config.serverName, numClients, stabilityData);
 
       this.closeClients(connectedClients);
 
@@ -67,14 +69,12 @@ class BroadcastTestRunner extends TestRunner {
     const stats = broadcastTest.getStatistics();
     const clientStats = broadcastTest.getStatisticsByClient();
     const latencyData = broadcastTest.getLatencyData();
-    const stabilityData = connectedClients.map(client => client.getConnectionStabilityMetrics());
 
     this.logger.log(`${connectedClients.length} clients broadcasted ${stats.broadcastCount} messages successfully`);
     return {
       stats,
       clientStats,
-      latencyData,
-      stabilityData
+      latencyData
     };
   }
 }
