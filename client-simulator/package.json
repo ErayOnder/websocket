@@ -6,10 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "demo:echo": "node src/demo-echo.js",
     "benchmark": "node src/benchmark.js",
-    "benchmark:quick": "node src/benchmark.js --duration 5 --load-phases 5,10",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "benchmark:help": "node src/benchmark.js --help",
+    "benchmark:quick": "node src/benchmark.js --mode init"
   },
   "keywords": [
     "websocket",

@@ -72,7 +72,7 @@ func (s *Server) Start() error {
 	fmt.Println("============================================================")
 	fmt.Printf("Port: %s\n\n", s.port)
 	fmt.Println("Supported message types:")
-	fmt.Println("  - Echo: {\"type\": \"echo\", \"id\": 1, \"timestamp\": ...}")
+	fmt.Println("  - Ping: {\"type\": \"ping\", \"id\": 1, \"timestamp\": ...}")
 	fmt.Println("  - Broadcast: {\"type\": \"broadcast\", \"id\": 1, \"timestamp\": ...}")
 	fmt.Println()
 	fmt.Printf("Throughput metrics logged to: data/raw/throughput_golang_gorilla.csv\n")
@@ -123,8 +123,8 @@ func (s *Server) handleMessage(conn *websocket.Conn, data []byte) {
 	}
 
 	switch msg.Type {
-	case "echo":
-		s.handleEcho(conn, &msg)
+	case "ping":
+		s.handlePing(conn, &msg)
 	case "broadcast":
 		s.handleBroadcast(conn, &msg)
 	default:
@@ -134,15 +134,21 @@ func (s *Server) handleMessage(conn *websocket.Conn, data []byte) {
 	}
 }
 
-func (s *Server) handleEcho(conn *websocket.Conn, msg *Message) {
-	data, err := json.Marshal(msg)
+func (s *Server) handlePing(conn *websocket.Conn, msg *Message) {
+	pongMsg := Message{
+		Type:      "pong",
+		ID:        msg.ID,
+		Timestamp: msg.Timestamp,
+	}
+
+	data, err := json.Marshal(pongMsg)
 	if err != nil {
-		s.logger.Error(fmt.Sprintf("Failed to marshal echo message: %v", err))
+		s.logger.Error(fmt.Sprintf("Failed to marshal pong message: %v", err))
 		return
 	}
 
 	if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-		s.logger.Error(fmt.Sprintf("Failed to send echo message: %v", err))
+		s.logger.Error(fmt.Sprintf("Failed to send pong message: %v", err))
 	}
 }
 

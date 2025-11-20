@@ -18,13 +18,13 @@ class WSClient {
 
   connect() {
     return new Promise((resolve, reject) => {
-      this.connectionStartTime = performance.now(); // High precision timing
+      this.connectionStartTime = performance.now();
 
       try {
         this.ws = new WebSocket(this.url);
 
         this.ws.on('open', () => {
-          this.connectionTime = performance.now() - this.connectionStartTime; // High precision timing
+          this.connectionTime = performance.now() - this.connectionStartTime;
           this.isConnected = true;
           resolve(this.connectionTime);
         });
@@ -35,11 +35,7 @@ class WSClient {
         });
 
         this.ws.on('error', (error) => {
-          if (this.logger) {
-            this.logger.error(`[Client ${this.clientId}] WebSocket error: ${error.message}`);
-          } else {
-            console.error(`[Client ${this.clientId}] WebSocket error:`, error.message);
-          }
+          this.logger.error(`[Client ${this.clientId}] WebSocket error: ${error.message}`);
           reject(error);
         });
 
@@ -59,7 +55,6 @@ class WSClient {
             this.wasUnexpectedDisconnect = true;
           }
 
-          // Notify close handlers
           this.closeHandlers.forEach(handler => handler({ code, reason, wasUnexpected: wasConnected }));
         });
 
@@ -96,7 +91,7 @@ class WSClient {
 
   close() {
     if (this.ws) {
-      this.wasUnexpectedDisconnect = false; // Mark as expected disconnect
+      this.wasUnexpectedDisconnect = false;
       this.ws.close();
       this.isConnected = false;
     }

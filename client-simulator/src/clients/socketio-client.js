@@ -18,7 +18,7 @@ class SocketIOClient {
 
   connect() {
     return new Promise((resolve, reject) => {
-      this.connectionStartTime = performance.now(); // High precision timing
+      this.connectionStartTime = performance.now();
 
       try {
         this.socket = io(this.url, {
@@ -27,7 +27,7 @@ class SocketIOClient {
         });
 
         this.socket.on('connect', () => {
-          this.connectionTime = performance.now() - this.connectionStartTime; // High precision timing
+          this.connectionTime = performance.now() - this.connectionStartTime;
           this.isConnected = true;
           resolve(this.connectionTime);
         });
@@ -37,11 +37,7 @@ class SocketIOClient {
         });
 
         this.socket.on('connect_error', (error) => {
-          if (this.logger) {
-            this.logger.error(`[Client ${this.clientId}] Socket.IO error: ${error.message}`);
-          } else {
-            console.error(`[Client ${this.clientId}] Socket.IO error:`, error.message);
-          }
+          this.logger.error(`[Client ${this.clientId}] Socket.IO error: ${error.message}`);
           reject(error);
         });
 
@@ -60,7 +56,6 @@ class SocketIOClient {
             this.wasUnexpectedDisconnect = true;
           }
 
-          // Notify close handlers
           this.closeHandlers.forEach(handler => handler({ reason, wasUnexpected: wasConnected }));
         });
 
@@ -92,7 +87,7 @@ class SocketIOClient {
 
   close() {
     if (this.socket) {
-      this.wasUnexpectedDisconnect = false; // Mark as expected disconnect
+      this.wasUnexpectedDisconnect = false;
       this.socket.close();
       this.isConnected = false;
     }

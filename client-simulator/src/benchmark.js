@@ -1,31 +1,41 @@
-import TestRunner from './runners/test-runner.js';
+import LoadTestRunner from './runners/load-test-runner.js';
+import BroadcastTestRunner from './runners/broadcast-test-runner.js';
 
 /**
- * Main Benchmark Orchestrator
- * Runs complete benchmark suite with both Echo and Broadcast tests
+ * WebSocket Benchmark Suite
+ * Single entry point for all performance testing
+ *
+ * Modes:
+ * 1. Init mode: Quick sanity check with 5 clients, 1 iteration
+ * 2. Full mode: Complete benchmark with load and broadcast tests
  */
 
 function parseArgs() {
   const args = process.argv.slice(2);
   const config = {
+    mode: 'full', // 'init' or 'full'
     serverUrl: 'ws://localhost:8080',
-    libraryName: 'ws',
+    serverName: 'ws',
     clientType: 'ws',
-    testType: 'all', // 'echo', 'broadcast', or 'all'
-    loadPhases: [100, 200, 400, 600, 800, 1000],
+    testType: 'all', // 'load', 'broadcast', or 'all'
+
+    // Full benchmark defaults
+    loadPhases: [200, 400, 800, 1600, 3200],
     iterations: 3,
     testDuration: 60000, // 60 seconds
-    messageInterval: 100, // For echo test
+    messageInterval: 100, // For load test
     broadcastInterval: 3000 // For broadcast test
   };
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
 
-    if (arg === '--server' || arg === '-s') {
+    if (arg === '--mode' || arg === '-m') {
+      config.mode = args[++i];
+    } else if (arg === '--server' || arg === '-s') {
       config.serverUrl = args[++i];
-    } else if (arg === '--library' || arg === '-l') {
-      config.libraryName = args[++i];
+    } else if (arg === '--name' || arg === '-n') {
+      config.serverName = args[++i];
     } else if (arg === '--client-type' || arg === '-c') {
       config.clientType = args[++i];
     } else if (arg === '--test' || arg === '-t') {
@@ -36,10 +46,21 @@ function parseArgs() {
       config.iterations = parseInt(args[++i]);
     } else if (arg === '--duration' || arg === '-d') {
       config.testDuration = parseInt(args[++i]) * 1000; // Convert to ms
+    } else if (arg === '--message-interval') {
+      config.messageInterval = parseInt(args[++i]);
+    } else if (arg === '--broadcast-interval') {
+      config.broadcastInterval = parseInt(args[++i]);
     } else if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
     }
+  }
+
+  // Override settings for init mode
+  if (config.mode === 'init') {
+    config.loadPhases = [5];
+    config.iterations = 1;
+    config.testDuration = 5000; // 5 seconds
   }
 
   return config;
@@ -48,115 +69,179 @@ function parseArgs() {
 function printUsage() {
   console.log(`
 WebSocket Benchmark Suite
+==========================
+
+Single entry point for all WebSocket performance testing.
 
 Usage: node benchmark.js [options]
 
-Options:
-  -s, --server <url>           Server URL (default: ws://localhost:8080)
-  -l, --library <name>         Library name for CSV files (default: ws)
-  -c, --client-type <type>     Client type: ws or socketio (default: ws)
-  -t, --test <type>            Test type: echo, broadcast, or all (default: all)
-  -p, --load-phases <phases>   Comma-separated client counts (default: 100,200,400,600,800,1000)
-  -i, --iterations <n>         Iterations per phase (default: 3)
-  -d, --duration <seconds>     Test duration in seconds (default: 60)
-  -h, --help                   Show this help message
+Modes:
+  --mode, -m <mode>              Test mode: 'init' or 'full' (default: full)
+                                 - init: Quick test with 1 client, 1 iteration (5s)
+                                 - full: Complete benchmark suite
+
+Server Configuration:
+  -s, --server <url>             Server URL (default: ws://localhost:8080)
+  -n, --name <name>              Server name for CSV files (default: ws)
+  -c, --client-type <type>       Client type: ws or socketio (default: ws)
+
+Test Configuration:
+  -t, --test <type>              Test type: load, broadcast, or all (default: all)
+  -p, --load-phases <phases>     Comma-separated client counts (default: 200,400,800,1600,3200)
+  -i, --iterations <n>           Iterations per phase (default: 3)
+  -d, --duration <seconds>       Test duration in seconds (default: 60)
+  --message-interval <ms>        Message interval for load test (default: 100)
+  --broadcast-interval <ms>      Broadcast interval (default: 3000)
+
+Other:
+  -h, --help                     Show this help message
 
 Examples:
-  # Run all tests with default settings
+  # Quick initialization test (recommended first run)
+  node benchmark.js --mode init
+
+  # Full benchmark with default settings
   node benchmark.js
 
-  # Run only echo test with custom load phases
-  node benchmark.js --test echo --load-phases 10,50,100
+  # Full benchmark for Socket.IO server
+  node benchmark.js --server http://localhost:3000 --name socketio --client-type socketio
 
-  # Run broadcast test with Socket.IO client
-  node benchmark.js --test broadcast --client-type socketio --server http://localhost:3000
+  # Only load test with custom phases
+  node benchmark.js --test load --load-phases 100,200,400
 
-  # Quick test with 5-second duration
-  node benchmark.js --duration 5 --load-phases 5,10
+  # Quick 10-second test
+  node benchmark.js --duration 10 --load-phases 50,100
   `);
+}
+
+async function runLoadTest(config) {
+  console.log('');
+  console.log('Starting Load Test...');
+  console.log('─'.repeat(70));
+
+  const runner = new LoadTestRunner({
+    serverUrl: config.serverUrl,
+    serverName: config.serverName,
+    clientType: config.clientType,
+    testDuration: config.testDuration,
+    messageInterval: config.messageInterval
+  });
+
+  const results = await runner.runPhased(config.loadPhases, config.iterations);
+
+  console.log('');
+  console.log('Load Test Results Summary:');
+  console.log('─'.repeat(70));
+  results.forEach(result => {
+    if (result.success) {
+      const { numClients, iteration, stats, reliabilityData } = result;
+      console.log(`${numClients} clients (iter ${iteration}): RTT p50=${stats.median}ms p95=${stats.p95}ms p99=${stats.p99}ms | Loss=${reliabilityData.lossRate}%`);
+    } else {
+      console.log(`${result.numClients} clients (iter ${result.iteration}): FAILED - ${result.error}`);
+    }
+  });
+
+  return results;
+}
+
+async function runBroadcastTest(config) {
+  console.log('');
+  console.log('Starting Broadcast Test...');
+  console.log('─'.repeat(70));
+
+  const runner = new BroadcastTestRunner({
+    serverUrl: config.serverUrl,
+    serverName: config.serverName,
+    clientType: config.clientType,
+    testDuration: config.testDuration,
+    broadcastInterval: config.broadcastInterval
+  });
+
+  const results = await runner.runPhased(config.loadPhases, config.iterations);
+
+  console.log('');
+  console.log('Broadcast Test Results Summary:');
+  console.log('─'.repeat(70));
+  results.forEach(result => {
+    if (result.success) {
+      const { numClients, iteration, stats, broadcastCount } = result;
+      console.log(`${numClients} clients (iter ${iteration}): Latency mean=${stats.mean}ms p50=${stats.median}ms | Broadcasts=${broadcastCount}`);
+    } else {
+      console.log(`${result.numClients} clients (iter ${result.iteration}): FAILED - ${result.error}`);
+    }
+  });
+
+  return results;
 }
 
 async function main() {
   const config = parseArgs();
 
   console.log('');
-  console.log('='.repeat(70));
+  console.log('═'.repeat(70));
   console.log('WebSocket Benchmark Suite');
-  console.log('='.repeat(70));
+  console.log('═'.repeat(70));
   console.log('');
-  console.log('Configuration:');
-  console.log(`  Server URL:         ${config.serverUrl}`);
-  console.log(`  Library Name:       ${config.libraryName}`);
-  console.log(`  Client Type:        ${config.clientType}`);
-  console.log(`  Test Type:          ${config.testType}`);
-  console.log(`  Load Phases:        ${config.loadPhases.join(', ')}`);
-  console.log(`  Iterations:         ${config.iterations}`);
-  console.log(`  Test Duration:      ${config.testDuration / 1000}s`);
-  console.log('');
-  console.log('='.repeat(70));
-  console.log('');
+  console.log('Mode:               ' + (config.mode === 'init' ? 'INITIALIZATION TEST' : 'FULL BENCHMARK'));
+  console.log('Server URL:         ' + config.serverUrl);
+  console.log('Server Name:        ' + config.serverName);
+  console.log('Client Type:        ' + config.clientType);
+  console.log('Test Type:          ' + config.testType);
+  console.log('Load Phases:        ' + config.loadPhases.join(', '));
+  console.log('Iterations:         ' + config.iterations);
+  console.log('Test Duration:      ' + (config.testDuration / 1000) + 's');
 
-  const runner = new TestRunner(config);
+  if (config.mode === 'init') {
+    console.log('');
+    console.log('Running quick initialization test to verify setup...');
+    console.log('This will create CSV files and test basic functionality.');
+  }
+
+  console.log('');
+  console.log('═'.repeat(70));
 
   try {
-    // Run Echo Test
-    if (config.testType === 'echo' || config.testType === 'all') {
-      console.log('');
-      console.log('Starting Echo Test Suite...');
-      console.log('');
-      const echoResults = await runner.runPhasedEchoTest(
-        config.loadPhases,
-        config.iterations
-      );
+    const allResults = {
+      load: null,
+      broadcast: null
+    };
 
-      console.log('');
-      console.log('Echo Test Results Summary:');
-      console.log('---');
-      echoResults.forEach(result => {
-        if (result.success) {
-          console.log(`${result.numClients} clients (iteration ${result.iteration}): Mean RTT=${result.stats.mean}ms, Messages=${result.messageCount}`);
-        } else {
-          console.log(`${result.numClients} clients (iteration ${result.iteration}): FAILED - ${result.error}`);
-        }
-      });
+    // Run Load Test
+    if (config.testType === 'load' || config.testType === 'all') {
+      allResults.load = await runLoadTest(config);
     }
 
     // Run Broadcast Test
     if (config.testType === 'broadcast' || config.testType === 'all') {
-      console.log('');
-      console.log('Starting Broadcast Test Suite...');
-      console.log('');
-      const broadcastResults = await runner.runPhasedBroadcastTest(
-        config.loadPhases,
-        config.iterations,
-        config.broadcastInterval
-      );
-
-      console.log('');
-      console.log('Broadcast Test Results Summary:');
-      console.log('---');
-      broadcastResults.forEach(result => {
-        if (result.success) {
-          console.log(`${result.numClients} clients (iteration ${result.iteration}): Mean Latency=${result.stats.mean}ms, Broadcasts=${result.broadcastCount}`);
-        } else {
-          console.log(`${result.numClients} clients (iteration ${result.iteration}): FAILED - ${result.error}`);
-        }
-      });
+      allResults.broadcast = await runBroadcastTest(config);
     }
 
     console.log('');
-    console.log('='.repeat(70));
-    console.log('Benchmark Complete!');
-    console.log('Results saved to ../../data/raw/');
-    console.log('='.repeat(70));
+    console.log('═'.repeat(70));
+    console.log('✓ Benchmark Complete!');
+    console.log('═'.repeat(70));
     console.log('');
+    console.log('Results saved to: ../../data/raw/');
+    console.log('');
+
+    if (config.mode === 'init') {
+      console.log('Initialization successful! CSV files created.');
+      console.log('You can now run the full benchmark with: node benchmark.js');
+      console.log('');
+    }
 
   } catch (error) {
     console.error('');
-    console.error('='.repeat(70));
-    console.error('Benchmark Failed!');
-    console.error(`Error: ${error.message}`);
-    console.error('='.repeat(70));
+    console.error('═'.repeat(70));
+    console.error('✗ Benchmark Failed!');
+    console.error('═'.repeat(70));
+    console.error('');
+    console.error('Error: ' + error.message);
+    console.error('');
+    if (error.stack) {
+      console.error('Stack trace:');
+      console.error(error.stack);
+    }
     console.error('');
     process.exit(1);
   }

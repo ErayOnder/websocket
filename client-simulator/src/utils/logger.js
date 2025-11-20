@@ -28,39 +28,39 @@ class Logger {
   }
 
   /**
-   * Clear CSV files for a specific library and client counts before starting a new phased test
-   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * Clear CSV files for a specific server and client counts before starting a new phased test
+   * @param {string} serverName - Server name (e.g., 'ws', 'socketio')
    * @param {Array<number>} clientCounts - Array of client counts to clear data for
    */
-  clearPhasedTestData(library, clientCounts) {
+  clearPhasedTestData(serverName, clientCounts) {
     let filesDeleted = 0;
 
     for (const numClients of clientCounts) {
-      const rttFile = path.join(this.dataDir, `rtt_${library}_${numClients}clients.csv`);
+      const rttFile = path.join(this.dataDir, `rtt_${serverName}_${numClients}clients.csv`);
       if (fs.existsSync(rttFile)) {
         fs.unlinkSync(rttFile);
         filesDeleted++;
       }
 
-      const connFile = path.join(this.dataDir, `connection_time_${library}_${numClients}clients.csv`);
+      const connFile = path.join(this.dataDir, `connection_time_${serverName}_${numClients}clients.csv`);
       if (fs.existsSync(connFile)) {
         fs.unlinkSync(connFile);
         filesDeleted++;
       }
 
-      const broadcastFile = path.join(this.dataDir, `broadcast_latency_${library}_${numClients}clients.csv`);
+      const broadcastFile = path.join(this.dataDir, `broadcast_latency_${serverName}_${numClients}clients.csv`);
       if (fs.existsSync(broadcastFile)) {
         fs.unlinkSync(broadcastFile);
         filesDeleted++;
       }
 
-      const reliabilityFile = path.join(this.dataDir, `reliability_${library}_${numClients}clients.csv`);
+      const reliabilityFile = path.join(this.dataDir, `reliability_${serverName}_${numClients}clients.csv`);
       if (fs.existsSync(reliabilityFile)) {
         fs.unlinkSync(reliabilityFile);
         filesDeleted++;
       }
 
-      const stabilityFile = path.join(this.dataDir, `connection_stability_${library}_${numClients}clients.csv`);
+      const stabilityFile = path.join(this.dataDir, `connection_stability_${serverName}_${numClients}clients.csv`);
       if (fs.existsSync(stabilityFile)) {
         fs.unlinkSync(stabilityFile);
         filesDeleted++;
@@ -70,12 +70,12 @@ class Logger {
 
   /**
    * Write connection time metrics to CSV (appends to existing file if present)
-   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * @param {string} serverName - Server name (e.g., 'ws', 'socketio')
    * @param {number} numClients - Number of clients in this test
    * @param {Array<{clientId: number, connectionTime: number}>} data - Connection time data
    */
-  writeConnectionTime(library, numClients, data) {
-    const filename = `connection_time_${library}_${numClients}clients.csv`;
+  writeConnectionTime(serverName, numClients, data) {
+    const filename = `connection_time_${serverName}_${numClients}clients.csv`;
     const filepath = path.join(this.dataDir, filename);
 
     const fileExists = fs.existsSync(filepath);
@@ -93,12 +93,12 @@ class Logger {
 
   /**
    * Write RTT (Round Trip Time) metrics to CSV (appends to existing file if present)
-   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * @param {string} serverName - Server name (e.g., 'ws', 'socketio')
    * @param {number} numClients - Number of clients in this test
    * @param {Array<{clientId: number, rtt: number, timestamp: number}>} data - RTT data
    */
-  writeRTT(library, numClients, data) {
-    const filename = `rtt_${library}_${numClients}clients.csv`;
+  writeRTT(serverName, numClients, data) {
+    const filename = `rtt_${serverName}_${numClients}clients.csv`;
     const filepath = path.join(this.dataDir, filename);
 
     const fileExists = fs.existsSync(filepath);
@@ -108,20 +108,22 @@ class Logger {
       content = 'client_id,rtt_ms,timestamp\n';
     }
 
-    const rows = data.map(d => `${d.clientId},${d.rtt.toFixed(3)},${d.timestamp}`).join('\n');
-    content += rows + '\n';
+    if (data && data.length > 0) {
+      const rows = data.map(d => `${d.clientId},${d.rtt.toFixed(3)},${d.timestamp}`).join('\n');
+      content += rows + '\n';
+    }
 
     fs.appendFileSync(filepath, content);
   }
 
   /**
    * Write broadcast latency metrics to CSV (appends to existing file if present)
-   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * @param {string} serverName - Server name (e.g., 'ws', 'socketio')
    * @param {number} numClients - Number of clients in this test
    * @param {Array<{clientId: number, latency: number, timestamp: number}>} data - Broadcast latency data
    */
-  writeBroadcastLatency(library, numClients, data) {
-    const filename = `broadcast_latency_${library}_${numClients}clients.csv`;
+  writeBroadcastLatency(serverName, numClients, data) {
+    const filename = `broadcast_latency_${serverName}_${numClients}clients.csv`;
     const filepath = path.join(this.dataDir, filename);
 
     const fileExists = fs.existsSync(filepath);
@@ -139,12 +141,12 @@ class Logger {
 
   /**
    * Write reliability metrics to CSV (appends to existing file if present)
-   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * @param {string} serverName - Server name (e.g., 'ws', 'socketio')
    * @param {number} numClients - Number of clients in this test
-   * @param {Array<{clientId: number, messagesSent: number, messagesReceived: number, messagesLost: number, lossRate: number}>} data - Reliability data
+   * @param {Object|Array} data - Reliability data (single object or array of objects)
    */
-  writeReliabilityMetrics(library, numClients, data) {
-    const filename = `reliability_${library}_${numClients}clients.csv`;
+  writeReliabilityData(serverName, numClients, data) {
+    const filename = `reliability_${serverName}_${numClients}clients.csv`;
     const filepath = path.join(this.dataDir, filename);
 
     const fileExists = fs.existsSync(filepath);
@@ -154,22 +156,28 @@ class Logger {
       content = 'client_id,messages_sent,messages_received,messages_lost,loss_rate_percent\n';
     }
 
-    const rows = data.map(d =>
-      `${d.clientId},${d.messagesSent},${d.messagesReceived},${d.messagesLost},${d.lossRate.toFixed(2)}`
-    ).join('\n');
-    content += rows + '\n';
+    if (data) {
+      const dataArray = Array.isArray(data) ? data : [data];
+      if (dataArray.length > 0) {
+        const rows = dataArray.map(d => {
+          const clientId = d.clientId !== undefined ? d.clientId : 'overall';
+          return `${clientId},${d.messagesSent},${d.messagesReceived},${d.messagesLost},${d.lossRate.toFixed(2)}`;
+        }).join('\n');
+        content += rows + '\n';
+      }
+    }
 
     fs.appendFileSync(filepath, content);
   }
 
   /**
    * Write connection stability metrics to CSV (appends to existing file if present)
-   * @param {string} library - Library name (e.g., 'ws', 'socketio')
+   * @param {string} serverName - Server name (e.g., 'ws', 'socketio')
    * @param {number} numClients - Number of clients in this test
    * @param {Array<{clientId: number, disconnectCount: number}>} data - Connection stability data
    */
-  writeConnectionStability(library, numClients, data) {
-    const filename = `connection_stability_${library}_${numClients}clients.csv`;
+  writeConnectionStability(serverName, numClients, data) {
+    const filename = `connection_stability_${serverName}_${numClients}clients.csv`;
     const filepath = path.join(this.dataDir, filename);
 
     const fileExists = fs.existsSync(filepath);
@@ -184,6 +192,7 @@ class Logger {
 
     fs.appendFileSync(filepath, content);
   }
+
 }
 
 export default Logger;

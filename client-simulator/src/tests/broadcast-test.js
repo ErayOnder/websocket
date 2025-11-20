@@ -1,8 +1,10 @@
-/**
- * Broadcast Test Implementation
- * Measures broadcast latency where one sender broadcasts to all receivers
- */
+import { calculateStatistics } from '../utils/statistics.js';
 
+/**
+ * Broadcast Test
+ * Measures broadcast latency where one sender broadcasts to all receivers
+ * Client sends a broadcast message and waits for responses from all receivers
+ */
 class BroadcastTest {
   constructor(clients, logger, senderClientId = 1) {
     this.clients = clients;
@@ -71,7 +73,7 @@ class BroadcastTest {
 
   handleBroadcastMessage(clientId, messageData) {
     try {
-      const receiveTime = performance.now(); // High precision timing
+      const receiveTime = performance.now();
       // Socket.IO sends parsed objects, native WebSocket sends strings
       const message = typeof messageData === 'string' ? JSON.parse(messageData) : messageData;
 
@@ -104,25 +106,9 @@ class BroadcastTest {
   }
 
   getStatistics() {
-    if (this.latencyData.length === 0) {
-      return { mean: 0, median: 0, min: 0, max: 0, count: 0, broadcastCount: 0 };
-    }
-
-    const latencies = this.latencyData.map(d => d.latency).sort((a, b) => a - b);
-    const sum = latencies.reduce((acc, val) => acc + val, 0);
-    const mean = sum / latencies.length;
-    const median = latencies.length % 2 === 0
-      ? (latencies[latencies.length / 2 - 1] + latencies[latencies.length / 2]) / 2
-      : latencies[Math.floor(latencies.length / 2)];
-    const min = latencies[0];
-    const max = latencies[latencies.length - 1];
-
+    const stats = calculateStatistics(this.latencyData, 'latency');
     return {
-      mean: parseFloat(mean.toFixed(2)),
-      median: parseFloat(median.toFixed(2)),
-      min: min,
-      max: max,
-      count: latencies.length,
+      ...stats,
       broadcastCount: this.broadcastCounter
     };
   }
@@ -133,32 +119,11 @@ class BroadcastTest {
     this.receiverClients.forEach(client => {
       const clientData = this.latencyData.filter(d => d.clientId === client.clientId);
 
-      if (clientData.length === 0) {
-        clientStats.push({
-          clientId: client.clientId,
-          mean: 0,
-          median: 0,
-          min: 0,
-          max: 0,
-          count: 0
-        });
-        return;
-      }
-
-      const latencies = clientData.map(d => d.latency).sort((a, b) => a - b);
-      const sum = latencies.reduce((acc, val) => acc + val, 0);
-      const mean = sum / latencies.length;
-      const median = latencies.length % 2 === 0
-        ? (latencies[latencies.length / 2 - 1] + latencies[latencies.length / 2]) / 2
-        : latencies[Math.floor(latencies.length / 2)];
+      const stats = calculateStatistics(clientData, 'latency');
 
       clientStats.push({
         clientId: client.clientId,
-        mean: parseFloat(mean.toFixed(2)),
-        median: parseFloat(median.toFixed(2)),
-        min: latencies[0],
-        max: latencies[latencies.length - 1],
-        count: latencies.length
+        ...stats
       });
     });
 

@@ -59,8 +59,8 @@ class WSServer {
     try {
       const message = JSON.parse(data.toString());
 
-      if (message.type === 'echo') {
-        this.handleEcho(ws, message);
+      if (message.type === 'ping') {
+        this.handlePing(ws, message);
       } else if (message.type === 'broadcast') {
         this.handleBroadcast(ws, message);
       } else {
@@ -71,8 +71,12 @@ class WSServer {
     }
   }
 
-  handleEcho(ws, message) {
-    ws.send(JSON.stringify(message));
+  handlePing(ws, message) {
+    ws.send(JSON.stringify({
+      type: 'pong',
+      id: message.id,
+      timestamp: message.timestamp
+    }));
   }
 
   handleBroadcast(sender, message) {

@@ -64,8 +64,8 @@ class SocketIOServer {
     try {
       const message = typeof data === 'string' ? JSON.parse(data) : data;
 
-      if (message.type === 'echo') {
-        this.handleEcho(socket, message);
+      if (message.type === 'ping') {
+        this.handlePing(socket, message);
       } else if (message.type === 'broadcast') {
         this.handleBroadcast(socket, message);
       } else {
@@ -76,8 +76,12 @@ class SocketIOServer {
     }
   }
 
-  handleEcho(socket, message) {
-    socket.emit('message', message);
+  handlePing(socket, message) {
+    socket.emit('message', {
+      type: 'pong',
+      id: message.id,
+      timestamp: message.timestamp
+    });
   }
 
   handleBroadcast(sender, message) {
