@@ -7,8 +7,15 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"syscall"
 	"time"
 )
+
+type cpuTimes struct {
+	utime     int64
+	stime     int64
+	timestamp time.Time
+}
 
 type Logger struct {
 	csvFile          *os.File
@@ -17,6 +24,7 @@ type Logger struct {
 	resourcesFile    *os.File
 	resourcesWriter  *csv.Writer
 	resourcesPath    string
+	lastCPU          cpuTimes
 }
 
 func NewLogger() *Logger {
@@ -55,7 +63,7 @@ func NewLogger() *Logger {
 		resourcesWriter = csv.NewWriter(resourcesFile)
 		resInfo, _ := resourcesFile.Stat()
 		if resInfo.Size() == 0 {
-			header := []string{"timestamp", "cpu_goroutines", "memory_alloc_mb", "memory_sys_mb", "gc_count"}
+			header := []string{"timestamp", "cpu_user_ms", "cpu_system_ms", "cpu_percent", "cpu_goroutines", "memory_alloc_mb", "memory_sys_mb", "gc_count"}
 			if err := resourcesWriter.Write(header); err != nil {
 				log.Printf("Warning: Failed to write resources CSV header: %v", err)
 			}
@@ -101,6 +109,39 @@ func (l *Logger) AppendThroughput(messagesPerSecond int, activeConnections int) 
 	l.csvWriter.Flush()
 }
 
+func (l *Logger) getCPUPercent() (float64, int64, int64) {
+	var rusage syscall.Rusage
+	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &rusage); err != nil {
+		return 0, 0, 0
+	}
+
+	now := time.Now()
+	// Convert timeval to microseconds
+	utime := rusage.Utime.Sec*1000000 + int64(rusage.Utime.Usec)
+	stime := rusage.Stime.Sec*1000000 + int64(rusage.Stime.Usec)
+
+	cpuPercent := 0.0
+	if !l.lastCPU.timestamp.IsZero() {
+		elapsed := now.Sub(l.lastCPU.timestamp).Microseconds()
+		if elapsed > 0 {
+			cpuUsed := (utime - l.lastCPU.utime) + (stime - l.lastCPU.stime)
+			cpuPercent = float64(cpuUsed) / float64(elapsed) * 100
+		}
+	}
+
+	l.lastCPU = cpuTimes{
+		utime:     utime,
+		stime:     stime,
+		timestamp: now,
+	}
+
+	// Convert to milliseconds for reporting (matching Node.js format)
+	utimeMs := utime / 1000
+	stimeMs := stime / 1000
+
+	return cpuPercent, utimeMs, stimeMs
+}
+
 func (l *Logger) AppendResourceMetrics() {
 	if l.resourcesWriter == nil {
 		return
@@ -109,13 +150,18 @@ func (l *Logger) AppendResourceMetrics() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
+	cpuPercent, cpuUserMs, cpuSystemMs := l.getCPUPercent()
+
 	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	record := []string{
 		timestamp,
-		fmt.Sprintf("%d", runtime.NumGoroutine()),
-		fmt.Sprintf("%.2f", float64(m.Alloc)/1024/1024),       // MB
-		fmt.Sprintf("%.2f", float64(m.Sys)/1024/1024),         // MB
-		fmt.Sprintf("%d", m.NumGC),
+		fmt.Sprintf("%.2f", float64(cpuUserMs)),              // CPU user time (ms)
+		fmt.Sprintf("%.2f", float64(cpuSystemMs)),            // CPU system time (ms)
+		fmt.Sprintf("%.2f", cpuPercent),                      // CPU percent
+		fmt.Sprintf("%d", runtime.NumGoroutine()),            // Goroutines
+		fmt.Sprintf("%.2f", float64(m.Alloc)/1024/1024),      // MB
+		fmt.Sprintf("%.2f", float64(m.Sys)/1024/1024),        // MB
+		fmt.Sprintf("%d", m.NumGC),                           // GC count
 	}
 
 	if err := l.resourcesWriter.Write(record); err != nil {
