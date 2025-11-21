@@ -99,14 +99,16 @@ class DataLoader:
         Returns:
             DataFrame with columns: timestamp, messages_per_second, active_connections
         """
-        pattern = f"throughput_{library}.csv"
+        # Throughput files use underscores, but library names may have hyphens
+        library_normalized = library.replace('-', '_')
+        pattern = f"throughput_{library_normalized}.csv"
         file_path = self.data_dir / pattern
 
         if not file_path.exists():
             return pd.DataFrame(columns=['timestamp', 'messages_per_second', 'active_connections'])
 
         df = pd.read_csv(file_path)
-        df['library'] = library
+        df['library'] = library  # Keep original library name for consistency
         return df
 
     def discover_libraries(self) -> List[str]:
@@ -293,14 +295,16 @@ class DataLoader:
         Returns:
             DataFrame with resource metrics (columns vary by server type)
         """
-        pattern = f"resources_{server_name}.csv"
+        # Resource files use underscores, normalize the server name
+        server_normalized = server_name.replace('-', '_')
+        pattern = f"resources_{server_normalized}.csv"
         file_path = self.data_dir / pattern
 
         if not file_path.exists():
             return pd.DataFrame()
 
         df = pd.read_csv(file_path)
-        df['server'] = server_name
+        df['server'] = server_name  # Keep original server name for consistency
 
         # Convert timestamp to datetime
         df['timestamp'] = pd.to_datetime(df['timestamp'])
@@ -366,13 +370,20 @@ class DataLoader:
         Load all server resource metrics data.
 
         Args:
-            servers: List of server names (None = all available servers)
+            servers: List of server names (None = discover from available files)
 
         Returns:
             Combined DataFrame with all resource metrics
         """
         if servers is None:
-            servers = ['golang_gorilla', 'golang_coder', 'ws', 'socketio']
+            # Discover servers from resource files
+            servers = []
+            for file in self.data_dir.glob("resources_*.csv"):
+                # Extract server name from pattern: resources_{server}.csv
+                server_name = file.stem.replace("resources_", "")
+                # Convert underscores to hyphens to match library naming convention
+                server_name = server_name.replace('_', '-')
+                servers.append(server_name)
 
         all_data = []
 

@@ -297,7 +297,7 @@ class StatisticsCalculator:
 
         # Calculate percentage of clients with disconnects
         stats['clients_with_disconnects_pct'] = (
-            (grouped['disconnect_count'].apply(lambda x: (x > 0).sum()) / stats['disconnect_count_count']) * 100
+            (grouped['disconnect_count'].apply(lambda x: (x > 0).sum()).reset_index(drop=True) / stats['disconnect_count_count']) * 100
         ).round(2)
 
         return stats
@@ -412,13 +412,21 @@ class StatisticsCalculator:
         leak_results = []
 
         for server in resource_df['server'].unique():
-            server_df = resource_df[resource_df['server'] == server].sort_values('timestamp')
+            # Make a copy to avoid SettingWithCopyWarning and ensure proper operations
+            server_df = resource_df[resource_df['server'] == server].copy()
+            
+            # Ensure timestamp is datetime before sorting
+            server_df['timestamp'] = pd.to_datetime(server_df['timestamp'], errors='coerce')
+            server_df = server_df.dropna(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
 
             if len(server_df) < 10:  # Need at least 10 data points
                 continue
-
+            
             # Create time index (seconds since start)
-            server_df['time_index'] = (server_df['timestamp'] - server_df['timestamp'].min()).dt.total_seconds()
+            # Convert to numeric (nanoseconds since epoch) then to seconds
+            timestamps_numeric = server_df['timestamp'].astype('int64') / 1e9
+            min_time = timestamps_numeric.min()
+            server_df['time_index'] = timestamps_numeric - min_time
 
             # Detect leak for different memory metrics
             memory_cols = []

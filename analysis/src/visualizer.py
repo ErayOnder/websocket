@@ -647,13 +647,20 @@ class Visualizer:
         fig, ax = plt.subplots(figsize=(12, 6))
 
         for idx, server in enumerate(resource_data['server'].unique()):
-            server_df = resource_data[resource_data['server'] == server].sort_values('timestamp')
+            # Make a copy to avoid view/copy issues
+            server_df = resource_data[resource_data['server'] == server].copy()
+            
+            # Ensure timestamp is datetime
+            server_df['timestamp'] = pd.to_datetime(server_df['timestamp'], errors='coerce')
+            server_df = server_df.dropna(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
 
             if server_df.empty:
                 continue
 
-            # Convert timestamp to relative time in minutes
-            server_df['time_minutes'] = (server_df['timestamp'] - server_df['timestamp'].min()).dt.total_seconds() / 60
+            # Convert timestamp to relative time in minutes using numeric conversion
+            timestamps_numeric = server_df['timestamp'].astype('int64') / 1e9
+            min_time = timestamps_numeric.min()
+            server_df['time_minutes'] = (timestamps_numeric - min_time) / 60
 
             color = self.colors[idx % len(self.colors)]
             ax.plot(server_df['time_minutes'], server_df['cpu_percent'],
