@@ -8,7 +8,11 @@
     "start": "node src/index.js",
     "benchmark": "node src/benchmark.js",
     "benchmark:help": "node src/benchmark.js --help",
-    "benchmark:quick": "node src/benchmark.js --mode init"
+    "benchmark:quick": "node src/benchmark.js --mode init",
+    "benchmark:ws": "node src/benchmark.js --server ws://localhost:8080 --name ws --client-type ws",
+    "benchmark:socketio": "node src/benchmark.js --server http://localhost:3000 --name socketio --client-type socketio",
+    "benchmark:go_gorilla": "node src/benchmark.js --server ws://localhost:8080 --name golang-gorilla --client-type ws",
+    "benchmark:go_coder": "node src/benchmark.js --server ws://localhost:8080 --name golang-coder --client-type ws"
   },
   "keywords": [
     "websocket",
