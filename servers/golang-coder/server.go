@@ -196,7 +196,6 @@ func (s *Server) trackThroughput() {
 			activeConnections := len(s.clients)
 			s.clientsMux.RUnlock()
 
-			s.logger.Log(fmt.Sprintf("Throughput: %d msg/s, Active connections: %d", messagesPerSecond, activeConnections))
 			s.logger.AppendThroughput(messagesPerSecond, activeConnections)
 			s.logger.AppendResourceMetrics()
 

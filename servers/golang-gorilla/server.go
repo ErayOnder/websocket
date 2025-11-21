@@ -225,8 +225,6 @@ func (s *Server) startThroughputTracking() {
 				messagesPerSecond := s.getAndResetMessageCount()
 				activeConnections := s.getClientCount()
 
-				s.logger.Log(fmt.Sprintf("Throughput: %d msg/s, Active connections: %d",
-					messagesPerSecond, activeConnections))
 				s.logger.AppendThroughput(messagesPerSecond, activeConnections)
 				s.logger.AppendResourceMetrics()
 
