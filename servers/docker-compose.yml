@@ -57,7 +57,34 @@ services:
     profiles:
       - golang-coder
 
+  # Golang - gobwas/ws server
+  golang-gobwas:
+    build:
+      context: ./golang-gobwas
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    networks:
+      - websocket-benchmark
+    profiles:
+      - golang-gobwas
+
+  # Golang - fasthttp/websocket server
+  golang-fasthttp:
+    build:
+      context: ./golang-fasthttp
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    networks:
+      - websocket-benchmark
+    profiles:
+      - golang-fasthttp
+
 networks:
   websocket-benchmark:
     driver: bridge
-

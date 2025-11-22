@@ -126,24 +126,32 @@ NPM Script Examples:
   npm run test:socketio                     # Test Socket.IO server
   npm run test:go_gorilla                   # Test Go Gorilla server
   npm run test:go_coder                     # Test Go Coder server
+  npm run test:go_gobwas                    # Test Go Gobwas server
+  npm run test:go_fasthttp                  # Test Go FastHTTP server
   
   # Load tests (RTT, Connection Time)
   npm run test:load:ws                      # Load test WebSocket
   npm run test:load:socketio                # Load test Socket.IO
   npm run test:load:go_gorilla              # Load test Go Gorilla
   npm run test:load:go_coder                # Load test Go Coder
+  npm run test:load:go_gobwas               # Load test Go Gobwas
+  npm run test:load:go_fasthttp             # Load test Go FastHTTP
   
   # Broadcast tests (Latency)
   npm run test:broadcast:ws                 # Broadcast test WebSocket
   npm run test:broadcast:socketio           # Broadcast test Socket.IO
   npm run test:broadcast:go_gorilla         # Broadcast test Go Gorilla
   npm run test:broadcast:go_coder           # Broadcast test Go Coder
+  npm run test:broadcast:go_gobwas          # Broadcast test Go Gobwas
+  npm run test:broadcast:go_fasthttp        # Broadcast test Go FastHTTP
   
   # Stress tests (Throughput, Stability, Reliability)
   npm run test:stress:ws                    # Stress test WebSocket
   npm run test:stress:socketio              # Stress test Socket.IO
   npm run test:stress:go_gorilla            # Stress test Go Gorilla
   npm run test:stress:go_coder              # Stress test Go Coder
+  npm run test:stress:go_gobwas             # Stress test Go Gobwas
+  npm run test:stress:go_fasthttp           # Stress test Go FastHTTP
   `);
 }
 
