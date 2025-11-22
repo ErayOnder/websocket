@@ -28,14 +28,16 @@ class BroadcastTestRunner extends TestRunner {
     this.logger.log('Phased Broadcast Test Complete');
   }
 
-  async run(numClients) {
+  async run(numClients, metrics = ['broadcast_latency']) {
     const clients = this.createClients(numClients);
 
     try {
       const { connectedClients, failedConnections } = await this.connectClients(clients);
       const { stats, clientStats, latencyData } = await this.runBroadcastTests(connectedClients);
 
-      this.logger.writeBroadcastLatency(this.config.serverName, numClients, latencyData);
+      if (metrics.includes('broadcast_latency')) {
+        this.logger.writeBroadcastLatency(this.config.serverName, numClients, latencyData);
+      }
 
       this.closeClients(connectedClients);
 

@@ -29,17 +29,28 @@ class LoadTestRunner extends TestRunner {
     this.logger.log('Progressive Load Test Complete');
   }
 
-  async run(numClients) {
+  async run(numClients, metrics = ['rtt', 'connection_time', 'reliability', 'connection_stability']) {
     const clients = this.createClients(numClients);
 
     try {
       const { connectedClients, connectionData, failedConnections } = await this.connectClients(clients);
       const { allRTTData, reliabilityData, stabilityData } = await this.runLoadTests(connectedClients);
 
-      this.logger.writeRTT(this.config.serverName, numClients, allRTTData);
-      this.logger.writeConnectionTime(this.config.serverName, numClients, connectionData);
-      this.logger.writeReliabilityData(this.config.serverName, numClients, reliabilityData);
-      this.logger.writeConnectionStability(this.config.serverName, numClients, stabilityData);
+      if (metrics.includes('rtt')) {
+        this.logger.writeRTT(this.config.serverName, numClients, allRTTData);
+      }
+
+      if (metrics.includes('connection_time')) {
+        this.logger.writeConnectionTime(this.config.serverName, numClients, connectionData);
+      }
+
+      if (metrics.includes('reliability')) {
+        this.logger.writeReliabilityData(this.config.serverName, numClients, reliabilityData);
+      }
+
+      if (metrics.includes('stability') || metrics.includes('connection_stability')) {
+        this.logger.writeConnectionStability(this.config.serverName, numClients, stabilityData);
+      }
 
       this.closeClients(connectedClients);
 

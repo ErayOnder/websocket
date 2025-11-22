@@ -94,78 +94,36 @@ def main():
     print(f"  Loaded {len(rtt_data)} RTT measurements")
 
     print("Loading connection time data...")
-    conn_data = loader.load_all_connection_time_data(libraries)
-    print(f"  Loaded {len(conn_data)} connection time measurements")
+    conn_df = loader.load_all_connection_time_data(libraries)
+    print(f"  Loaded {len(conn_df)} connection time measurements")
 
     print("Loading broadcast latency data...")
-    broadcast_data = loader.load_all_broadcast_latency_data(libraries)
-    print(f"  Loaded {len(broadcast_data)} broadcast latency measurements")
+    broadcast_df = loader.load_all_broadcast_latency_data(libraries)
+    print(f"  Loaded {len(broadcast_df)} broadcast latency measurements")
 
     print("Loading throughput data...")
-    throughput_data = []
-    throughput_vs_load_list = []
-    
+    throughput_data_list = []
     for library in libraries:
         df = loader.load_throughput_data(library)
         if not df.empty:
-            throughput_data.append(df)
-            
-            # Calculate throughput vs load for this library
-            tvl_stats = stats_calc.calculate_throughput_vs_load(df)
-            if not tvl_stats.empty:
-                tvl_stats['library'] = library
-                throughput_vs_load_list.append(tvl_stats)
+            throughput_data_list.append(df)
 
-    if throughput_data:
-        import pandas as pd
-        throughput_data = pd.concat(throughput_data, ignore_index=True)
-        print(f"  Loaded {len(throughput_data)} throughput measurements")
+    if throughput_data_list:
+        throughput_df = pd.concat(throughput_data_list, ignore_index=True)
+        print(f"  Loaded {len(throughput_df)} throughput measurements")
     else:
-        import pandas as pd
-        throughput_data = pd.DataFrame()
+        throughput_df = pd.DataFrame()
         print(f"  No throughput data found")
 
-    if throughput_vs_load_list:
-        throughput_vs_load_stats = pd.concat(throughput_vs_load_list, ignore_index=True)
-    else:
-        throughput_vs_load_stats = pd.DataFrame()
-
     print("Loading reliability data...")
-    reliability_data = loader.load_all_reliability_data(libraries)
-    print(f"  Loaded {len(reliability_data)} reliability measurements")
+    reliability_df = loader.load_all_reliability_data(libraries)
+    print(f"  Loaded {len(reliability_df)} reliability measurements")
 
     print("Loading connection stability data...")
-    stability_data = loader.load_all_stability_data(libraries)
-    print(f"  Loaded {len(stability_data)} stability measurements")
+    stability_df = loader.load_all_stability_data(libraries)
+    print(f"  Loaded {len(stability_df)} stability measurements")
 
     print("Loading server resource data...")
-    resource_data = loader.load_all_resource_data()
-    print(f"  Loaded {len(resource_data)} resource measurements")
-
-    print()
-
-    # Calculate statistics
-    print("Calculating statistics...")
-
-    print("  Aggregating RTT statistics...")
-    rtt_stats = stats_calc.aggregate_rtt_stats(rtt_data)
-
-    print("  Aggregating connection time statistics...")
-    conn_stats = stats_calc.aggregate_connection_time_stats(conn_data)
-
-    print("  Aggregating broadcast latency statistics...")
-    broadcast_stats = stats_calc.aggregate_broadcast_latency_stats(broadcast_data)
-
-    print("  Aggregating throughput statistics...")
-    throughput_stats = stats_calc.aggregate_throughput_stats(throughput_data)
-
-    print("  Aggregating reliability statistics...")
-    reliability_stats = stats_calc.aggregate_reliability_stats(reliability_data)
-
-    print("  Aggregating stability statistics...")
-    stability_stats = stats_calc.aggregate_stability_stats(stability_data)
-
-    print("  Aggregating resource statistics...")
     resource_stats = stats_calc.aggregate_resource_stats(resource_data)
 
     print("  Calculating performance degradation...")
