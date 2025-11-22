@@ -27,6 +27,7 @@ type Client struct {
 
 type Server struct {
 	port             string
+	enableLogging    bool
 	clients          map[*Client]bool
 	clientsMux       sync.RWMutex
 	logger           *Logger
@@ -36,9 +37,10 @@ type Server struct {
 	shutdownChan     chan struct{}
 }
 
-func NewServer(port string) *Server {
+func NewServer(port string, enableLogging bool) *Server {
 	return &Server{
 		port:             port,
+		enableLogging:    enableLogging,
 		clients:          make(map[*Client]bool),
 		logger:           NewLogger(),
 		throughputTicker: time.NewTicker(1 * time.Second),
@@ -47,7 +49,9 @@ func NewServer(port string) *Server {
 }
 
 func (s *Server) Start() error {
-	go s.trackThroughput()
+	if s.enableLogging {
+		go s.trackThroughput()
+	}
 
 	go s.handleShutdown()
 
@@ -197,7 +201,7 @@ func (s *Server) trackThroughput() {
 			s.clientsMux.RUnlock()
 
 			s.logger.AppendThroughput(messagesPerSecond, activeConnections)
-			s.logger.AppendResourceMetrics()
+			s.logger.AppendResourceMetrics(activeConnections)
 
 		case <-s.shutdownChan:
 			return
@@ -226,24 +230,55 @@ func (s *Server) handleShutdown() {
 }
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	port := "8080"
+	enableLogging := false
+
+	// Parse command-line arguments
+	for i := 1; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		switch arg {
+		case "--port", "-p":
+			if i+1 < len(os.Args) {
+				port = os.Args[i+1]
+				i++
+			}
+		case "--log":
+			enableLogging = true
+		default:
+			// Support legacy format: ./server 8080
+			if len(os.Args) == 2 {
+				port = os.Args[1]
+			}
+		}
+	}
+
+	// Check environment variable as fallback
+	if envPort := os.Getenv("PORT"); envPort != "" && port == "8080" {
+		port = envPort
 	}
 
 	fmt.Println("============================================================")
 	fmt.Println("Coder WebSocket Server (v1.8.13)")
 	fmt.Println("============================================================")
-	fmt.Printf("Port: %s\n\n", port)
+	fmt.Printf("Port: %s\n", port)
+	if enableLogging {
+		fmt.Println("Logging: ENABLED")
+	} else {
+		fmt.Println("Logging: DISABLED")
+	}
+	fmt.Println()
 	fmt.Println("Supported message types:")
 	fmt.Println(`  - Ping: {"type": "ping", "id": 1, "timestamp": ...}`)
 	fmt.Println(`  - Broadcast: {"type": "broadcast", "id": 1, "timestamp": ...}`)
 	fmt.Println()
-	fmt.Println("Throughput metrics logged to: data/raw/throughput_golang_coder.csv")
+	if enableLogging {
+		fmt.Println("Throughput metrics logged to: data/raw/throughput_golang_coder.csv")
+		fmt.Println("Resource metrics logged to: data/raw/resources_golang_coder.csv")
+	}
 	fmt.Println("Press Ctrl+C to stop")
 	fmt.Println("============================================================")
 
-	server := NewServer(port)
+	server := NewServer(port, enableLogging)
 	if err := server.Start(); err != nil {
 		fmt.Printf("Server error: %v\n", err)
 		os.Exit(1)

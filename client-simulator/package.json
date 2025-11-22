@@ -5,14 +5,23 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "benchmark": "node src/benchmark.js",
     "benchmark:help": "node src/benchmark.js --help",
-    "benchmark:quick": "node src/benchmark.js --mode init",
-    "benchmark:ws": "node src/benchmark.js --server ws://localhost:8080 --name ws --client-type ws",
-    "benchmark:socketio": "node src/benchmark.js --server http://localhost:3000 --name socketio --client-type socketio",
-    "benchmark:go_gorilla": "node src/benchmark.js --server ws://localhost:8080 --name golang-gorilla --client-type ws",
-    "benchmark:go_coder": "node src/benchmark.js --server ws://localhost:8080 --name golang-coder --client-type ws"
+    "test:ws": "node src/benchmark.js --mode init --server ws://localhost:8080 --name ws --client-type ws",
+    "test:socketio": "node src/benchmark.js --mode init --server http://localhost:3000 --name socketio --client-type socketio",
+    "test:go_gorilla": "node src/benchmark.js --mode init --server ws://localhost:8080 --name golang-gorilla --client-type ws",
+    "test:go_coder": "node src/benchmark.js --mode init --server ws://localhost:8080 --name golang-coder --client-type ws",
+    "test:load:ws": "node src/benchmark.js --mode load --server ws://localhost:8080 --name ws --client-type ws",
+    "test:load:socketio": "node src/benchmark.js --mode load --server http://localhost:3000 --name socketio --client-type socketio",
+    "test:load:go_gorilla": "node src/benchmark.js --mode load --server ws://localhost:8080 --name golang-gorilla --client-type ws",
+    "test:load:go_coder": "node src/benchmark.js --mode load --server ws://localhost:8080 --name golang-coder --client-type ws",
+    "test:broadcast:ws": "node src/benchmark.js --mode broadcast --server ws://localhost:8080 --name ws --client-type ws",
+    "test:broadcast:socketio": "node src/benchmark.js --mode broadcast --server http://localhost:3000 --name socketio --client-type socketio",
+    "test:broadcast:go_gorilla": "node src/benchmark.js --mode broadcast --server ws://localhost:8080 --name golang-gorilla --client-type ws",
+    "test:broadcast:go_coder": "node src/benchmark.js --mode broadcast --server ws://localhost:8080 --name golang-coder --client-type ws",
+    "test:stress:ws": "node src/benchmark.js --mode stress --server ws://localhost:8080 --name ws --client-type ws",
+    "test:stress:socketio": "node src/benchmark.js --mode stress --server http://localhost:3000 --name socketio --client-type socketio",
+    "test:stress:go_gorilla": "node src/benchmark.js --mode stress --server ws://localhost:8080 --name golang-gorilla --client-type ws",
+    "test:stress:go_coder": "node src/benchmark.js --mode stress --server ws://localhost:8080 --name golang-coder --client-type ws"
   },
   "keywords": [
     "websocket",
@@ -28,4 +37,3 @@
   },
   "devDependencies": {}
 }
-

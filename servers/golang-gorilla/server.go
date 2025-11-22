@@ -22,6 +22,7 @@ type Message struct {
 
 type Server struct {
 	port             string
+	enableLogging    bool
 	upgrader         websocket.Upgrader
 	clients          map[*websocket.Conn]bool
 	clientsMux       sync.RWMutex
@@ -32,13 +33,14 @@ type Server struct {
 	shutdownChan     chan struct{}
 }
 
-func NewServer(port string) *Server {
+func NewServer(port string, enableLogging bool) *Server {
 	if port == "" {
 		port = "8080"
 	}
 
 	return &Server{
-		port: port,
+		port:          port,
+		enableLogging: enableLogging,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
@@ -53,7 +55,9 @@ func NewServer(port string) *Server {
 }
 
 func (s *Server) Start() error {
-	s.startThroughputTracking()
+	if s.enableLogging {
+		s.startThroughputTracking()
+	}
 
 	http.HandleFunc("/", s.handleWebSocket)
 
@@ -70,13 +74,21 @@ func (s *Server) Start() error {
 	fmt.Println("============================================================")
 	fmt.Println("Gorilla WebSocket Server (v1.5.3)")
 	fmt.Println("============================================================")
-	fmt.Printf("Port: %s\n\n", s.port)
+	fmt.Printf("Port: %s\n", s.port)
+	if s.enableLogging {
+		fmt.Println("Logging: ENABLED")
+	} else {
+		fmt.Println("Logging: DISABLED")
+	}
+	fmt.Println()
 	fmt.Println("Supported message types:")
 	fmt.Println("  - Ping: {\"type\": \"ping\", \"id\": 1, \"timestamp\": ...}")
 	fmt.Println("  - Broadcast: {\"type\": \"broadcast\", \"id\": 1, \"timestamp\": ...}")
 	fmt.Println()
-	fmt.Printf("Throughput metrics logged to: data/raw/throughput_golang_gorilla.csv\n")
-	fmt.Printf("Resource metrics logged to: data/raw/resources_golang_gorilla.csv\n")
+	if s.enableLogging {
+		fmt.Printf("Throughput metrics logged to: data/raw/throughput_golang_gorilla.csv\n")
+		fmt.Printf("Resource metrics logged to: data/raw/resources_golang_gorilla.csv\n")
+	}
 	fmt.Println("Press Ctrl+C to stop")
 	fmt.Println("============================================================")
 	fmt.Println()
@@ -226,7 +238,7 @@ func (s *Server) startThroughputTracking() {
 				activeConnections := s.getClientCount()
 
 				s.logger.AppendThroughput(messagesPerSecond, activeConnections)
-				s.logger.AppendResourceMetrics()
+				s.logger.AppendResourceMetrics(activeConnections)
 
 			case <-s.shutdownChan:
 				return
@@ -252,12 +264,34 @@ func (s *Server) Stop() {
 }
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	port := "8080"
+	enableLogging := false
+
+	// Parse command-line arguments
+	for i := 1; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		switch arg {
+		case "--port", "-p":
+			if i+1 < len(os.Args) {
+				port = os.Args[i+1]
+				i++
+			}
+		case "--log":
+			enableLogging = true
+		default:
+			// Support legacy format: ./server 8080
+			if len(os.Args) == 2 {
+				port = os.Args[1]
+			}
+		}
 	}
 
-	server := NewServer(port)
+	// Check environment variable as fallback
+	if envPort := os.Getenv("PORT"); envPort != "" && port == "8080" {
+		port = envPort
+	}
+
+	server := NewServer(port, enableLogging)
 	if err := server.Start(); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}

@@ -55,8 +55,9 @@ class Logger {
    * Append resource metrics data to CSV
    * @param {string} serverName - Server name
    * @param {number} timestamp - Unix timestamp
+   * @param {number} activeConnections - Number of active connections
    */
-  appendResourceMetrics(serverName, timestamp) {
+  appendResourceMetrics(serverName, timestamp, activeConnections) {
     const filename = `resources_${serverName}.csv`;
     const filepath = path.join(this.dataDir, filename);
 
@@ -83,11 +84,11 @@ class Logger {
 
     // Create file with header if it doesn't exist
     if (!fs.existsSync(filepath)) {
-      const header = 'timestamp,cpu_user_ms,cpu_system_ms,cpu_percent,memory_rss_mb,memory_heap_used_mb,memory_heap_total_mb,memory_external_mb\n';
+      const header = 'timestamp,cpu_user_ms,cpu_system_ms,cpu_percent,memory_rss_mb,memory_heap_used_mb,memory_heap_total_mb,memory_external_mb,active_connections\n';
       fs.writeFileSync(filepath, header);
     }
 
-    const row = `${timestamp},${(cpuUsage.user / 1000).toFixed(2)},${(cpuUsage.system / 1000).toFixed(2)},${cpuPercent.toFixed(2)},${(memUsage.rss / 1024 / 1024).toFixed(2)},${(memUsage.heapUsed / 1024 / 1024).toFixed(2)},${(memUsage.heapTotal / 1024 / 1024).toFixed(2)},${(memUsage.external / 1024 / 1024).toFixed(2)}\n`;
+    const row = `${timestamp},${(cpuUsage.user / 1000).toFixed(2)},${(cpuUsage.system / 1000).toFixed(2)},${cpuPercent.toFixed(2)},${(memUsage.rss / 1024 / 1024).toFixed(2)},${(memUsage.heapUsed / 1024 / 1024).toFixed(2)},${(memUsage.heapTotal / 1024 / 1024).toFixed(2)},${(memUsage.external / 1024 / 1024).toFixed(2)},${activeConnections}\n`;
     fs.appendFileSync(filepath, row);
   }
 }

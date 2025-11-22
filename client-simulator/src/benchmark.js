@@ -106,17 +106,44 @@ Server Configuration:
   -c, --client-type <type>       Client type: ws or socketio (default: ws)
 
 Test Configuration:
-  -p, --load-phases <phases>     Comma-separated client counts
+  -p, --load-phases <phases>     Comma-separated client counts (default: 200,400,800,1600,3200)
   -i, --iterations <n>           Iterations per phase (default: 3)
-  -d, --duration <seconds>       Test duration in seconds
-  --message-interval <ms>        Message interval for load test
-  --broadcast-interval <ms>      Broadcast interval
+  -d, --duration <seconds>       Test duration in seconds (default: 60)
+  --message-interval <ms>        Message interval for load/stress test (default: 100ms, stress: 5ms)
+  --broadcast-interval <ms>      Broadcast interval (default: 3000ms)
 
-Examples:
-  node benchmark.js --mode init
-  node benchmark.js --mode load
-  node benchmark.js --mode broadcast
-  node benchmark.js --mode stress
+Direct CLI Examples:
+  node benchmark.js --mode init --server ws://localhost:8080 --name ws --client-type ws
+  node benchmark.js --mode load --server http://localhost:3000 --name socketio --client-type socketio
+  node benchmark.js --mode broadcast --server ws://localhost:8080 --name golang-gorilla --client-type ws
+  node benchmark.js --mode stress --server ws://localhost:8080 --name ws --client-type ws
+
+NPM Script Examples:
+  npm run benchmark:help                    # Show this help
+  
+  # Init tests (quick sanity check)
+  npm run test:ws                           # Test WebSocket server
+  npm run test:socketio                     # Test Socket.IO server
+  npm run test:go_gorilla                   # Test Go Gorilla server
+  npm run test:go_coder                     # Test Go Coder server
+  
+  # Load tests (RTT, Connection Time)
+  npm run test:load:ws                      # Load test WebSocket
+  npm run test:load:socketio                # Load test Socket.IO
+  npm run test:load:go_gorilla              # Load test Go Gorilla
+  npm run test:load:go_coder                # Load test Go Coder
+  
+  # Broadcast tests (Latency)
+  npm run test:broadcast:ws                 # Broadcast test WebSocket
+  npm run test:broadcast:socketio           # Broadcast test Socket.IO
+  npm run test:broadcast:go_gorilla         # Broadcast test Go Gorilla
+  npm run test:broadcast:go_coder           # Broadcast test Go Coder
+  
+  # Stress tests (Throughput, Stability, Reliability)
+  npm run test:stress:ws                    # Stress test WebSocket
+  npm run test:stress:socketio              # Stress test Socket.IO
+  npm run test:stress:go_gorilla            # Stress test Go Gorilla
+  npm run test:stress:go_coder              # Stress test Go Coder
   `);
 }
 

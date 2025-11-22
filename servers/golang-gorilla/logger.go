@@ -18,13 +18,13 @@ type cpuTimes struct {
 }
 
 type Logger struct {
-	csvFile          *os.File
-	csvWriter        *csv.Writer
-	filePath         string
-	resourcesFile    *os.File
-	resourcesWriter  *csv.Writer
-	resourcesPath    string
-	lastCPU          cpuTimes
+	csvFile         *os.File
+	csvWriter       *csv.Writer
+	filePath        string
+	resourcesFile   *os.File
+	resourcesWriter *csv.Writer
+	resourcesPath   string
+	lastCPU         cpuTimes
 }
 
 func NewLogger() *Logger {
@@ -63,7 +63,7 @@ func NewLogger() *Logger {
 		resourcesWriter = csv.NewWriter(resourcesFile)
 		resInfo, _ := resourcesFile.Stat()
 		if resInfo.Size() == 0 {
-			header := []string{"timestamp", "cpu_user_ms", "cpu_system_ms", "cpu_percent", "cpu_goroutines", "memory_alloc_mb", "memory_sys_mb", "gc_count"}
+			header := []string{"timestamp", "cpu_user_ms", "cpu_system_ms", "cpu_percent", "cpu_goroutines", "memory_alloc_mb", "memory_sys_mb", "gc_count", "active_connections"}
 			if err := resourcesWriter.Write(header); err != nil {
 				log.Printf("Warning: Failed to write resources CSV header: %v", err)
 			}
@@ -142,7 +142,7 @@ func (l *Logger) getCPUPercent() (float64, int64, int64) {
 	return cpuPercent, utimeMs, stimeMs
 }
 
-func (l *Logger) AppendResourceMetrics() {
+func (l *Logger) AppendResourceMetrics(activeConnections int) {
 	if l.resourcesWriter == nil {
 		return
 	}
@@ -155,13 +155,14 @@ func (l *Logger) AppendResourceMetrics() {
 	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	record := []string{
 		timestamp,
-		fmt.Sprintf("%.2f", float64(cpuUserMs)),              // CPU user time (ms)
-		fmt.Sprintf("%.2f", float64(cpuSystemMs)),            // CPU system time (ms)
-		fmt.Sprintf("%.2f", cpuPercent),                      // CPU percent
-		fmt.Sprintf("%d", runtime.NumGoroutine()),            // Goroutines
-		fmt.Sprintf("%.2f", float64(m.Alloc)/1024/1024),      // MB
-		fmt.Sprintf("%.2f", float64(m.Sys)/1024/1024),        // MB
-		fmt.Sprintf("%d", m.NumGC),                           // GC count
+		fmt.Sprintf("%.2f", float64(cpuUserMs)),         // CPU user time (ms)
+		fmt.Sprintf("%.2f", float64(cpuSystemMs)),       // CPU system time (ms)
+		fmt.Sprintf("%.2f", cpuPercent),                 // CPU percent
+		fmt.Sprintf("%d", runtime.NumGoroutine()),       // Goroutines
+		fmt.Sprintf("%.2f", float64(m.Alloc)/1024/1024), // MB
+		fmt.Sprintf("%.2f", float64(m.Sys)/1024/1024),   // MB
+		fmt.Sprintf("%d", m.NumGC),                      // GC count
+		fmt.Sprintf("%d", activeConnections),            // Active connections
 	}
 
 	if err := l.resourcesWriter.Write(record); err != nil {

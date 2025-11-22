@@ -2,8 +2,9 @@ import { WebSocketServer } from 'ws';
 import Logger from './logger.js';
 
 class WSServer {
-  constructor(port = 8080) {
+  constructor(port = 8080, enableLogging = false) {
     this.port = port;
+    this.enableLogging = enableLogging;
     this.wss = null;
     this.clients = new Set();
     this.logger = new Logger();
@@ -19,7 +20,9 @@ class WSServer {
 
     this.wss.on('listening', () => {
       this.logger.log(`WebSocket server (ws) listening on port ${this.port}`);
-      this.startThroughputTracking();
+      if (this.enableLogging) {
+        this.startThroughputTracking();
+      }
     });
 
     this.wss.on('connection', (ws) => {
@@ -106,7 +109,7 @@ class WSServer {
 
       this.throughputData.push(dataPoint);
       this.logger.appendThroughput('ws', dataPoint.timestamp, dataPoint.messagesPerSecond, dataPoint.activeConnections);
-      this.logger.appendResourceMetrics('ws', dataPoint.timestamp);
+      this.logger.appendResourceMetrics('ws', dataPoint.timestamp, dataPoint.activeConnections);
     }, 1000); // Track every second
   }
 

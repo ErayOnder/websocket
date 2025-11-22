@@ -3,8 +3,9 @@ import { createServer } from 'http';
 import Logger from './logger.js';
 
 class SocketIOServer {
-  constructor(port = 3000) {
+  constructor(port = 3000, enableLogging = false) {
     this.port = port;
+    this.enableLogging = enableLogging;
     this.httpServer = null;
     this.io = null;
     this.clients = new Map();
@@ -32,7 +33,9 @@ class SocketIOServer {
 
     this.httpServer.listen(this.port, () => {
       this.logger.log(`Socket.IO server listening on port ${this.port}`);
-      this.startThroughputTracking();
+      if (this.enableLogging) {
+        this.startThroughputTracking();
+      }
     });
 
     process.on('SIGTERM', () => this.stop());
@@ -112,7 +115,7 @@ class SocketIOServer {
 
       this.throughputData.push(dataPoint);
       this.logger.appendThroughput('socketio', dataPoint.timestamp, dataPoint.messagesPerSecond, dataPoint.activeConnections);
-      this.logger.appendResourceMetrics('socketio', dataPoint.timestamp);
+      this.logger.appendResourceMetrics('socketio', dataPoint.timestamp, dataPoint.activeConnections);
     }, 1000); // Track every second
   }
 
