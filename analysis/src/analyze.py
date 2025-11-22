@@ -103,10 +103,18 @@ def main():
 
     print("Loading throughput data...")
     throughput_data = []
+    throughput_vs_load_list = []
+    
     for library in libraries:
         df = loader.load_throughput_data(library)
         if not df.empty:
             throughput_data.append(df)
+            
+            # Calculate throughput vs load for this library
+            tvl_stats = stats_calc.calculate_throughput_vs_load(df)
+            if not tvl_stats.empty:
+                tvl_stats['library'] = library
+                throughput_vs_load_list.append(tvl_stats)
 
     if throughput_data:
         import pandas as pd
@@ -116,6 +124,11 @@ def main():
         import pandas as pd
         throughput_data = pd.DataFrame()
         print(f"  No throughput data found")
+
+    if throughput_vs_load_list:
+        throughput_vs_load_stats = pd.concat(throughput_vs_load_list, ignore_index=True)
+    else:
+        throughput_vs_load_stats = pd.DataFrame()
 
     print("Loading reliability data...")
     reliability_data = loader.load_all_reliability_data(libraries)
@@ -193,6 +206,11 @@ def main():
             throughput_stats.to_csv(throughput_path, index=False)
             print(f"  Saved throughput statistics to: {throughput_path}")
 
+        if not throughput_vs_load_stats.empty:
+            tvl_path = output_dir / 'throughput_vs_load.csv'
+            throughput_vs_load_stats.to_csv(tvl_path, index=False)
+            print(f"  Saved throughput vs load statistics to: {tvl_path}")
+
         if not reliability_stats.empty:
             reliability_path = output_dir / 'reliability_statistics.csv'
             reliability_stats.to_csv(reliability_path, index=False)
@@ -253,6 +271,10 @@ def main():
         if not throughput_stats.empty:
             print("  Creating throughput comparison chart...")
             visualizer.plot_throughput_comparison(throughput_stats)
+
+        if not throughput_vs_load_stats.empty:
+            print("  Creating throughput vs load chart...")
+            visualizer.plot_throughput_vs_load(throughput_vs_load_stats)
 
         if not reliability_stats.empty:
             print("  Creating message loss trends chart...")

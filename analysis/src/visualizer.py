@@ -233,6 +233,50 @@ class Visualizer:
         print(f"Saved throughput comparison chart to: {save_path}")
         plt.close()
 
+    def plot_throughput_vs_load(self, stats_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
+        """
+        Create line chart showing average throughput vs client load (Load Test only).
+
+        Args:
+            stats_df: DataFrame with columns: library, client_count, mean_throughput
+            save_path: Path to save the figure
+        """
+        if stats_df.empty:
+            print("Warning: No throughput vs load data to plot")
+            return
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Group by library
+        for idx, (library, group) in enumerate(stats_df.groupby('library')):
+            color = self.colors[idx % len(self.colors)]
+            
+            # Sort by client count to ensure correct line drawing
+            group = group.sort_values('client_count')
+            
+            ax.plot(group['client_count'], group['mean_throughput'],
+                    marker='o', label=library, color=color, linewidth=2)
+
+        ax.set_xlabel('Number of Clients', fontsize=12)
+        ax.set_ylabel('Mean Throughput (msg/s)', fontsize=12)
+        ax.set_title('Average Throughput vs Client Load (Load Test)', fontsize=14, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        # Ensure x-axis has integer ticks for client counts if they are few
+        client_counts = sorted(stats_df['client_count'].unique())
+        if len(client_counts) < 20:
+            ax.set_xticks(client_counts)
+
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'throughput_vs_load.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved throughput vs load chart to: {save_path}")
+        plt.close()
+
     def plot_all_metrics_comparison(self, summary_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
         """
         Create comprehensive comparison chart for all metrics.
