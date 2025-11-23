@@ -186,52 +186,7 @@ class Visualizer:
         print(f"Saved broadcast latency trends chart to: {save_path}")
         plt.close()
 
-    def plot_throughput_comparison(self, stats_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
-        """
-        Create bar chart comparing throughput across libraries.
 
-        Args:
-            stats_df: DataFrame with columns: library, mean, max
-            save_path: Path to save the figure
-        """
-        if stats_df.empty:
-            print("Warning: No throughput data to plot")
-            return
-
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-
-        libraries = stats_df['library'].tolist()
-        x = np.arange(len(libraries))
-        width = 0.6
-
-        # Plot mean throughput
-        ax1.bar(x, stats_df['mean'], width,
-               color=self.colors[:len(libraries)], alpha=0.8)
-        ax1.set_xlabel('Library', fontsize=12)
-        ax1.set_ylabel('Mean Throughput (msg/s)', fontsize=12)
-        ax1.set_title('Mean Throughput Comparison', fontsize=14, fontweight='bold')
-        ax1.set_xticks(x)
-        ax1.set_xticklabels(libraries, rotation=45, ha='right')
-        ax1.grid(True, alpha=0.3, axis='y')
-
-        # Plot max throughput
-        ax2.bar(x, stats_df['max'], width,
-               color=self.colors[:len(libraries)], alpha=0.8)
-        ax2.set_xlabel('Library', fontsize=12)
-        ax2.set_ylabel('Max Throughput (msg/s)', fontsize=12)
-        ax2.set_title('Maximum Throughput Comparison', fontsize=14, fontweight='bold')
-        ax2.set_xticks(x)
-        ax2.set_xticklabels(libraries, rotation=45, ha='right')
-        ax2.grid(True, alpha=0.3, axis='y')
-
-        plt.tight_layout()
-
-        if save_path is None:
-            save_path = self.output_dir / 'throughput_comparison.png'
-
-        plt.savefig(save_path, bbox_inches='tight')
-        print(f"Saved throughput comparison chart to: {save_path}")
-        plt.close()
 
     def plot_throughput_vs_load(self, stats_df: pd.DataFrame, save_path: Optional[str] = None) -> None:
         """
@@ -678,7 +633,7 @@ class Visualizer:
 
     def plot_cpu_utilization(self, resource_data: pd.DataFrame, save_path: Optional[str] = None) -> None:
         """
-        Create chart showing CPU utilization over time.
+        Create chart showing CPU utilization over time, split by server type.
 
         Args:
             resource_data: DataFrame with timestamp and cpu_percent
@@ -688,35 +643,85 @@ class Visualizer:
             print("Warning: No CPU utilization data to plot")
             return
 
-        fig, ax = plt.subplots(figsize=(12, 6))
+        # Split servers into Go and Node.js
+        go_servers = resource_data[resource_data['server'].str.contains('golang', case=False)]['server'].unique()
+        node_servers = resource_data[~resource_data['server'].str.contains('golang', case=False)]['server'].unique()
 
-        for idx, server in enumerate(resource_data['server'].unique()):
-            # Make a copy to avoid view/copy issues
-            server_df = resource_data[resource_data['server'] == server].copy()
-            
-            # Ensure timestamp is datetime
-            server_df['timestamp'] = pd.to_datetime(server_df['timestamp'], errors='coerce')
-            server_df = server_df.dropna(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
 
-            if server_df.empty:
-                continue
+        # Plot Go Servers
+        if len(go_servers) > 0:
+            for idx, server in enumerate(go_servers):
+                server_df = resource_data[resource_data['server'] == server].copy()
+                server_df['timestamp'] = pd.to_datetime(server_df['timestamp'], errors='coerce')
+                server_df = server_df.dropna(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
+                
+                # Filter out initial and trailing idle periods
+                if 'active_connections' in server_df.columns:
+                    active_mask = server_df['active_connections'] > 0
+                    if active_mask.any():
+                        first_active_idx = server_df[active_mask].index.min()
+                        last_active_idx = server_df[active_mask].index.max()
+                        server_df = server_df.iloc[first_active_idx:last_active_idx + 1].reset_index(drop=True)
+                
+                if server_df.empty:
+                    continue
 
-            # Convert timestamp to relative time in minutes using numeric conversion
-            timestamps_numeric = server_df['timestamp'].astype('int64') / 1e9
-            min_time = timestamps_numeric.min()
-            server_df['time_minutes'] = (timestamps_numeric - min_time) / 60
+                timestamps_numeric = server_df['timestamp'].astype('int64') / 1e9
+                min_time = timestamps_numeric.min()
+                server_df['time_minutes'] = (timestamps_numeric - min_time) / 60
 
-            color = self.colors[idx % len(self.colors)]
-            ax.plot(server_df['time_minutes'], server_df['cpu_percent'],
-                   label=server, color=color, linewidth=2, alpha=0.8)
+                color = self.colors[idx % len(self.colors)]
+                ax1.plot(server_df['time_minutes'], server_df['cpu_percent'],
+                       label=server, color=color, linewidth=2, alpha=0.8)
 
-        ax.set_xlabel('Time (minutes)', fontsize=12)
-        ax.set_ylabel('CPU Utilization (%)', fontsize=12)
-        ax.set_title('CPU Utilization Over Time', fontsize=14, fontweight='bold')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        ax.set_ylim(bottom=0)
+            ax1.set_xlabel('Time (minutes)', fontsize=12)
+            ax1.set_ylabel('CPU Utilization (%)', fontsize=12)
+            ax1.set_title('Go Servers (Multi-core)', fontsize=14, fontweight='bold')
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+            ax1.set_ylim(bottom=0)
+        else:
+            ax1.text(0.5, 0.5, 'No Go server data', ha='center', va='center')
+            ax1.axis('off')
 
+        # Plot Node.js Servers
+        if len(node_servers) > 0:
+            for idx, server in enumerate(node_servers):
+                server_df = resource_data[resource_data['server'] == server].copy()
+                server_df['timestamp'] = pd.to_datetime(server_df['timestamp'], errors='coerce')
+                server_df = server_df.dropna(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
+                
+                # Filter out initial and trailing idle periods
+                if 'active_connections' in server_df.columns:
+                    active_mask = server_df['active_connections'] > 0
+                    if active_mask.any():
+                        first_active_idx = server_df[active_mask].index.min()
+                        last_active_idx = server_df[active_mask].index.max()
+                        server_df = server_df.iloc[first_active_idx:last_active_idx + 1].reset_index(drop=True)
+                
+                if server_df.empty:
+                    continue
+
+                timestamps_numeric = server_df['timestamp'].astype('int64') / 1e9
+                min_time = timestamps_numeric.min()
+                server_df['time_minutes'] = (timestamps_numeric - min_time) / 60
+
+                color = self.colors[(idx + len(go_servers)) % len(self.colors)]
+                ax2.plot(server_df['time_minutes'], server_df['cpu_percent'],
+                       label=server, color=color, linewidth=2, alpha=0.8)
+
+            ax2.set_xlabel('Time (minutes)', fontsize=12)
+            ax2.set_ylabel('CPU Utilization (%)', fontsize=12)
+            ax2.set_title('Node.js Servers (Single-core)', fontsize=14, fontweight='bold')
+            ax2.legend()
+            ax2.grid(True, alpha=0.3)
+            ax2.set_ylim(bottom=0, top=110) # Node.js caps at 100% usually
+        else:
+            ax2.text(0.5, 0.5, 'No Node.js server data', ha='center', va='center')
+            ax2.axis('off')
+
+        plt.suptitle('CPU Utilization Over Time', fontsize=16, fontweight='bold')
         plt.tight_layout()
 
         if save_path is None:
@@ -724,6 +729,115 @@ class Visualizer:
 
         plt.savefig(save_path, bbox_inches='tight')
         print(f"Saved CPU utilization chart to: {save_path}")
+        plt.close()
+
+    def plot_memory_utilization(self, resource_data: pd.DataFrame, save_path: Optional[str] = None) -> None:
+        """
+        Create chart showing memory utilization over time, split by server type.
+
+        Args:
+            resource_data: DataFrame with timestamp and memory metrics
+            save_path: Path to save the figure
+        """
+        if resource_data.empty:
+            print("Warning: No memory utilization data to plot")
+            return
+
+        # Split servers into Go and Node.js
+        go_servers = resource_data[resource_data['server'].str.contains('golang', case=False)]['server'].unique()
+        node_servers = resource_data[~resource_data['server'].str.contains('golang', case=False)]['server'].unique()
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+        # Plot Go Servers (memory_alloc_mb and memory_sys_mb)
+        if len(go_servers) > 0 and 'memory_alloc_mb' in resource_data.columns:
+            for idx, server in enumerate(go_servers):
+                server_df = resource_data[resource_data['server'] == server].copy()
+                server_df['timestamp'] = pd.to_datetime(server_df['timestamp'], errors='coerce')
+                server_df = server_df.dropna(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
+                
+                # Filter out initial and trailing idle periods
+                if 'active_connections' in server_df.columns:
+                    active_mask = server_df['active_connections'] > 0
+                    if active_mask.any():
+                        first_active_idx = server_df[active_mask].index.min()
+                        last_active_idx = server_df[active_mask].index.max()
+                        server_df = server_df.iloc[first_active_idx:last_active_idx + 1].reset_index(drop=True)
+                
+                if server_df.empty:
+                    continue
+
+                timestamps_numeric = server_df['timestamp'].astype('int64') / 1e9
+                min_time = timestamps_numeric.min()
+                server_df['time_minutes'] = (timestamps_numeric - min_time) / 60
+
+                color = self.colors[idx % len(self.colors)]
+                
+                # Plot both alloc and sys memory
+                ax1.plot(server_df['time_minutes'], server_df['memory_alloc_mb'],
+                       label=f'{server} (Alloc)', color=color, linewidth=2, alpha=0.8, linestyle='-')
+                ax1.plot(server_df['time_minutes'], server_df['memory_sys_mb'],
+                       label=f'{server} (Sys)', color=color, linewidth=1.5, alpha=0.5, linestyle='--')
+
+            ax1.set_xlabel('Time (minutes)', fontsize=12)
+            ax1.set_ylabel('Memory Usage (MB)', fontsize=12)
+            ax1.set_title('Go Servers Memory Usage', fontsize=14, fontweight='bold')
+            ax1.legend(fontsize=9)
+            ax1.grid(True, alpha=0.3)
+            ax1.set_ylim(bottom=0)
+        else:
+            ax1.text(0.5, 0.5, 'No Go server data', ha='center', va='center')
+            ax1.axis('off')
+
+        # Plot Node.js Servers (memory_rss_mb and memory_heap_used_mb)
+        if len(node_servers) > 0 and 'memory_rss_mb' in resource_data.columns:
+            for idx, server in enumerate(node_servers):
+                server_df = resource_data[resource_data['server'] == server].copy()
+                server_df['timestamp'] = pd.to_datetime(server_df['timestamp'], errors='coerce')
+                server_df = server_df.dropna(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
+                
+                # Filter out initial and trailing idle periods
+                if 'active_connections' in server_df.columns:
+                    active_mask = server_df['active_connections'] > 0
+                    if active_mask.any():
+                        first_active_idx = server_df[active_mask].index.min()
+                        last_active_idx = server_df[active_mask].index.max()
+                        server_df = server_df.iloc[first_active_idx:last_active_idx + 1].reset_index(drop=True)
+                
+                if server_df.empty:
+                    continue
+
+                timestamps_numeric = server_df['timestamp'].astype('int64') / 1e9
+                min_time = timestamps_numeric.min()
+                server_df['time_minutes'] = (timestamps_numeric - min_time) / 60
+
+                color = self.colors[(idx + len(go_servers)) % len(self.colors)]
+                
+                # Plot both RSS and Heap Used
+                ax2.plot(server_df['time_minutes'], server_df['memory_rss_mb'],
+                       label=f'{server} (RSS)', color=color, linewidth=2, alpha=0.8, linestyle='-')
+                if 'memory_heap_used_mb' in server_df.columns:
+                    ax2.plot(server_df['time_minutes'], server_df['memory_heap_used_mb'],
+                           label=f'{server} (Heap)', color=color, linewidth=1.5, alpha=0.5, linestyle='--')
+
+            ax2.set_xlabel('Time (minutes)', fontsize=12)
+            ax2.set_ylabel('Memory Usage (MB)', fontsize=12)
+            ax2.set_title('Node.js Servers Memory Usage', fontsize=14, fontweight='bold')
+            ax2.legend(fontsize=9)
+            ax2.grid(True, alpha=0.3)
+            ax2.set_ylim(bottom=0)
+        else:
+            ax2.text(0.5, 0.5, 'No Node.js server data', ha='center', va='center')
+            ax2.axis('off')
+
+        plt.suptitle('Memory Utilization Over Time', fontsize=16, fontweight='bold')
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = self.output_dir / 'memory_utilization_trends.png'
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved memory utilization chart to: {save_path}")
         plt.close()
 
     def plot_load_test_progressive_degradation(self, degradation_data: dict, save_path: Optional[str] = None) -> None:

@@ -70,7 +70,7 @@ function applyModeDefaults(config) {
       // High throughput settings
       // Metrics: throughput, resources, stability, reliability
       if (!process.argv.includes('--load-phases') && !process.argv.includes('-p')) {
-        config.loadPhases = [50, 100, 200, 400, 800];
+        config.loadPhases = [200, 400, 800, 1600, 3200];
       }
       if (!process.argv.includes('--message-interval')) {
         config.messageInterval = 5; // 5ms interval
@@ -99,7 +99,7 @@ Modes:
                                  - init: Quick sanity check (5s, 5 clients)
                                  - load: Standard load test (records RTT, Connection Time)
                                  - broadcast: Broadcast test (records Latency)
-                                 - stress: Stress test (records Throughput, Stability, Reliability)
+                                 - stress: Ramp-up stress test (records Reliability, Stability)
 
 Server Configuration:
   -s, --server <url>             Server URL (default: ws://localhost:8080)
@@ -108,7 +108,7 @@ Server Configuration:
 
 Test Configuration:
   -p, --load-phases <phases>     Comma-separated client counts (default: 200,400,800,1600,3200)
-  -i, --iterations <n>           Iterations per phase (default: 3)
+  -i, --iterations <n>           Iterations per phase (default: 3, ignored for stress mode)
   -d, --duration <seconds>       Test duration in seconds (default: 60)
   --message-interval <ms>        Message interval for load/stress test (default: 100ms, stress: 5ms)
   --broadcast-interval <ms>      Broadcast interval (default: 3000ms)
@@ -259,7 +259,11 @@ async function main() {
   console.log('Server Name:        ' + config.serverName);
   console.log('Client Type:        ' + config.clientType);
   console.log('Load Phases:        ' + config.loadPhases.join(', '));
-  console.log('Iterations:         ' + config.iterations);
+
+  if (config.mode !== 'stress') {
+    console.log('Iterations:         ' + config.iterations);
+  }
+
   console.log('Test Duration:      ' + (config.testDuration / 1000) + 's');
 
   if (config.mode === 'stress') {

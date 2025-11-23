@@ -13,6 +13,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 from data_loader import DataLoader
 from stats_calculator import StatisticsCalculator
 from visualizer import Visualizer
@@ -124,6 +126,16 @@ def main():
     print(f"  Loaded {len(stability_df)} stability measurements")
 
     print("Loading server resource data...")
+    resource_data = loader.load_all_resource_data(libraries)
+    print(f"  Loaded {len(resource_data)} resource measurements")
+    print("  Calculating statistical summaries...")
+    rtt_stats = stats_calc.aggregate_rtt_stats(rtt_data)
+    conn_stats = stats_calc.aggregate_connection_time_stats(conn_df)
+    broadcast_stats = stats_calc.aggregate_broadcast_latency_stats(broadcast_df)
+    throughput_stats = pd.DataFrame() # stats_calc.aggregate_throughput_stats(throughput_df)
+    throughput_vs_load_stats = stats_calc.calculate_throughput_vs_load(throughput_df)
+    reliability_stats = stats_calc.aggregate_reliability_stats(reliability_df)
+    stability_stats = stats_calc.aggregate_stability_stats(stability_df)
     resource_stats = stats_calc.aggregate_resource_stats(resource_data)
 
     print("  Calculating performance degradation...")
@@ -131,6 +143,12 @@ def main():
 
     print("  Detecting memory leaks...")
     leak_detection = stats_calc.detect_memory_leaks(resource_data)
+
+    print("  Aggregating CPU by phase...")
+    cpu_by_phase = stats_calc.aggregate_cpu_by_phase(resource_data)
+    
+    print("  Aggregating memory by phase...")
+    memory_by_phase = stats_calc.aggregate_memory_by_phase(resource_data)
 
     print("  Creating summary table...")
     summary_table = stats_calc.create_summary_table(
@@ -158,11 +176,6 @@ def main():
             broadcast_path = output_dir / 'broadcast_latency_statistics.csv'
             broadcast_stats.to_csv(broadcast_path, index=False)
             print(f"  Saved broadcast latency statistics to: {broadcast_path}")
-
-        if not throughput_stats.empty:
-            throughput_path = output_dir / 'throughput_statistics.csv'
-            throughput_stats.to_csv(throughput_path, index=False)
-            print(f"  Saved throughput statistics to: {throughput_path}")
 
         if not throughput_vs_load_stats.empty:
             tvl_path = output_dir / 'throughput_vs_load.csv'
@@ -193,6 +206,16 @@ def main():
             leak_path = output_dir / 'memory_leak_detection.csv'
             leak_detection.to_csv(leak_path, index=False)
             print(f"  Saved memory leak detection to: {leak_path}")
+
+        if not cpu_by_phase.empty:
+            cpu_phase_path = output_dir / 'cpu_utilization_by_phase.csv'
+            cpu_by_phase.to_csv(cpu_phase_path, index=False)
+            print(f"  Saved CPU by phase to: {cpu_phase_path}")
+
+        if not memory_by_phase.empty:
+            memory_phase_path = output_dir / 'memory_utilization_by_phase.csv'
+            memory_by_phase.to_csv(memory_phase_path, index=False)
+            print(f"  Saved memory by phase to: {memory_phase_path}")
 
         if not summary_table.empty:
             summary_path = output_dir / 'summary_table.csv'
@@ -226,10 +249,6 @@ def main():
             print("  Creating broadcast latency trends chart...")
             visualizer.plot_broadcast_latency_trends(broadcast_stats)
 
-        if not throughput_stats.empty:
-            print("  Creating throughput comparison chart...")
-            visualizer.plot_throughput_comparison(throughput_stats)
-
         if not throughput_vs_load_stats.empty:
             print("  Creating throughput vs load chart...")
             visualizer.plot_throughput_vs_load(throughput_vs_load_stats)
@@ -257,6 +276,10 @@ def main():
         if not resource_data.empty and 'cpu_percent' in resource_data.columns:
             print("  Creating CPU utilization chart...")
             visualizer.plot_cpu_utilization(resource_data)
+
+        if not resource_data.empty:
+            print("  Creating memory utilization chart...")
+            visualizer.plot_memory_utilization(resource_data)
 
         if not summary_table.empty:
             print("  Creating all metrics comparison chart...")

@@ -118,37 +118,37 @@ class StatisticsCalculator:
 
         return stats
 
-    def aggregate_throughput_stats(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Aggregate throughput statistics by library.
 
+
+    def calculate_throughput_vs_load(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate average throughput vs client load.
+        
         Args:
             df: DataFrame with columns: library, messages_per_second, active_connections
-
+            
         Returns:
-            DataFrame with aggregated statistics
+            DataFrame with columns: library, client_count, mean_throughput
         """
         if df.empty:
             return pd.DataFrame()
 
-        # Filter out zero throughput (idle periods)
-        df_active = df[df['messages_per_second'] > 0]
-
+        # Filter out zero throughput
+        df_active = df[df['messages_per_second'] > 0].copy()
+        
         if df_active.empty:
             return pd.DataFrame()
+            
+        # Group by library and active_connections
+        # We round active_connections to nearest 10 to group similar load levels
+        df_active['client_count'] = df_active['active_connections'].round(-1)
+        
+        grouped = df_active.groupby(['library', 'client_count'])['messages_per_second'].mean().reset_index()
+        grouped.rename(columns={'messages_per_second': 'mean_throughput'}, inplace=True)
+        
+        return grouped
 
-        grouped = df_active.groupby('library')['messages_per_second']
 
-        stats = grouped.agg([
-            ('mean', 'mean'),
-            ('median', 'median'),
-            ('std', 'std'),
-            ('min', 'min'),
-            ('max', 'max'),
-            ('count', 'count')
-        ]).reset_index()
-
-        return stats
 
     def create_summary_table(self, rtt_df: pd.DataFrame, conn_df: pd.DataFrame,
                            broadcast_df: pd.DataFrame, throughput_df: pd.DataFrame,
@@ -348,6 +348,172 @@ class StatisticsCalculator:
             summaries.append(summary)
 
         return pd.DataFrame(summaries)
+
+    def aggregate_cpu_by_phase(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Aggregate CPU metrics by server and active connection phase.
+
+        Args:
+            df: DataFrame with resource metrics including active_connections
+
+        Returns:
+            DataFrame with server, client_count, and mean CPU metrics
+        """
+        if df.empty or 'active_connections' not in df.columns:
+            return pd.DataFrame()
+
+        # Filter out idle periods (active_connections = 0)
+        df_active = df[df['active_connections'] > 0].copy()
+        
+        if df_active.empty:
+            return pd.DataFrame()
+
+        results = []
+
+        for server in df_active['server'].unique():
+            server_df = df_active[df_active['server'] == server].copy()
+            
+            # Group by active_connections (round to nearest 10 for grouping similar phases)
+            server_df['client_count'] = server_df['active_connections'].round(-1)
+            
+            # Determine server type by checking which columns have actual data
+            is_go_server = 'cpu_goroutines' in server_df.columns and server_df['cpu_goroutines'].notna().any()
+            is_node_server = not is_go_server  # If not Go, then Node.js
+            
+            # For Go servers
+            if is_go_server:
+                grouped = server_df.groupby('client_count').agg({
+                    'cpu_percent': 'mean',
+                    'cpu_goroutines': 'mean'
+                }).reset_index()
+                
+                for _, row in grouped.iterrows():
+                    results.append({
+                        'server': server,
+                        'client_count': int(row['client_count']),
+                        'cpu_percent_mean': round(row['cpu_percent'], 2),
+                        'cpu_goroutines_mean': round(row['cpu_goroutines'], 2)
+                    })
+            
+            # For Node.js servers
+            elif is_node_server:
+                grouped = server_df.groupby('client_count')['cpu_percent'].mean().reset_index()
+                
+                for _, row in grouped.iterrows():
+                    results.append({
+                        'server': server,
+                        'client_count': int(row['client_count']),
+                        'cpu_percent_mean': round(row['cpu_percent'], 2)
+                    })
+
+        return pd.DataFrame(results)
+
+    def aggregate_memory_by_phase(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Aggregate memory metrics by server and active connection phase.
+
+        Args:
+            df: DataFrame with resource metrics including active_connections
+
+        Returns:
+            DataFrame with server, client_count, and mean memory metrics
+        """
+        if df.empty or 'active_connections' not in df.columns:
+            return pd.DataFrame()
+
+        # Filter out idle periods (active_connections = 0)
+        df_active = df[df['active_connections'] > 0].copy()
+        
+        if df_active.empty:
+            return pd.DataFrame()
+
+        go_results = []
+        node_results = []
+
+        for server in df_active['server'].unique():
+            server_df = df_active[df_active['server'] == server].copy()
+            
+            # Group by active_connections (round to nearest 10 for grouping similar phases)
+            server_df['client_count'] = server_df['active_connections'].round(-1)
+            
+            # Determine server type by checking which columns have actual data
+            is_go_server = 'memory_alloc_mb' in server_df.columns and server_df['memory_alloc_mb'].notna().any()
+            is_node_server = 'memory_rss_mb' in server_df.columns and server_df['memory_rss_mb'].notna().any()
+            
+            # For Go servers
+            if is_go_server:
+                grouped = server_df.groupby('client_count').agg({
+                    'memory_alloc_mb': 'mean',
+                    'memory_sys_mb': 'mean',
+                    'gc_count': 'max'
+                }).reset_index()
+                
+                for _, row in grouped.iterrows():
+                    result = {
+                        'server': server,
+                        'client_count': int(row['client_count']),
+                        'memory_alloc_mb_mean': round(row['memory_alloc_mb'], 2),
+                        'memory_sys_mb_mean': round(row['memory_sys_mb'], 2),
+                        'memory_rss_mb_mean': None,
+                        'memory_heap_used_mb_mean': None,
+                        'memory_heap_total_mb_mean': None,
+                        'memory_external_mb_mean': None
+                    }
+                    
+                    # Handle gc_count which might be NaN
+                    if pd.notna(row['gc_count']):
+                        result['gc_count'] = int(row['gc_count'])
+                    else:
+                        result['gc_count'] = None
+                    
+                    go_results.append(result)
+            
+            # For Node.js servers
+            elif is_node_server:
+                agg_dict = {
+                    'memory_rss_mb': 'mean',
+                    'memory_heap_used_mb': 'mean'
+                }
+                
+                if 'memory_heap_total_mb' in server_df.columns:
+                    agg_dict['memory_heap_total_mb'] = 'mean'
+                if 'memory_external_mb' in server_df.columns:
+                    agg_dict['memory_external_mb'] = 'mean'
+                
+                grouped = server_df.groupby('client_count').agg(agg_dict).reset_index()
+                
+                for _, row in grouped.iterrows():
+                    result = {
+                        'server': server,
+                        'client_count': int(row['client_count']),
+                        'memory_alloc_mb_mean': None,
+                        'memory_sys_mb_mean': None,
+                        'gc_count': None,
+                        'memory_rss_mb_mean': round(row['memory_rss_mb'], 2),
+                        'memory_heap_used_mb_mean': round(row['memory_heap_used_mb'], 2)
+                    }
+                    
+                    if 'memory_heap_total_mb' in row:
+                        result['memory_heap_total_mb_mean'] = round(row['memory_heap_total_mb'], 2)
+                    else:
+                        result['memory_heap_total_mb_mean'] = None
+                    
+                    if 'memory_external_mb' in row:
+                        result['memory_external_mb_mean'] = round(row['memory_external_mb'], 2)
+                    else:
+                        result['memory_external_mb_mean'] = None
+                    
+                    node_results.append(result)
+
+        # Combine results from both server types
+        all_results = go_results + node_results
+        
+        if not all_results:
+            return pd.DataFrame()
+        
+        return pd.DataFrame(all_results)
+
+
 
     def calculate_performance_degradation(self, rtt_df: pd.DataFrame) -> pd.DataFrame:
         """
