@@ -93,6 +93,10 @@ class SocketIOClient {
     }
   }
 
+  clearMessageHandlers() {
+    this.messageHandlers = [];
+  }
+
   getConnectionTime() {
     return this.connectionTime;
   }

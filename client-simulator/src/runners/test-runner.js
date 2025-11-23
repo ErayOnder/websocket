@@ -36,14 +36,7 @@ class TestRunner {
    */
   async runPhased(loadPhases, iterations = 3, metrics = []) {
     this.logTestStart(loadPhases, iterations);
-
-    // Determine file types to clear based on metrics
-    // Map 'stability' metric to 'connection_stability' file type
-    const fileTypesToClear = metrics.length > 0
-      ? metrics.map(m => m === 'stability' ? 'connection_stability' : m)
-      : this.getFileTypes();
-
-    this.logger.clearPhasedTestData(this.config.serverName, loadPhases, fileTypesToClear);
+    this.logger.clearPhasedTestData(this.config.serverName, loadPhases, this.getFileTypes());
 
     const results = [];
     for (const numClients of loadPhases) {

@@ -11,7 +11,7 @@ class LoadTestRunner extends TestRunner {
   }
 
   getFileTypes() {
-    return ['rtt', 'connection_time', 'reliability', 'connection_stability'];
+    return ['rtt', 'connection_time'];
   }
 
   logTestStart(loadPhases, iterations) {
@@ -42,14 +42,6 @@ class LoadTestRunner extends TestRunner {
 
       if (metrics.includes('connection_time')) {
         this.logger.writeConnectionTime(this.config.serverName, numClients, connectionData);
-      }
-
-      if (metrics.includes('reliability')) {
-        this.logger.writeReliabilityData(this.config.serverName, numClients, reliabilityData);
-      }
-
-      if (metrics.includes('stability') || metrics.includes('connection_stability')) {
-        this.logger.writeConnectionStability(this.config.serverName, numClients, stabilityData);
       }
 
       this.closeClients(connectedClients);

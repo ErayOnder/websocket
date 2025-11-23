@@ -1,5 +1,6 @@
 import LoadTestRunner from './runners/load-test-runner.js';
 import BroadcastTestRunner from './runners/broadcast-test-runner.js';
+import StressTestRunner from './runners/stress-test-runner.js';
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -185,6 +186,36 @@ async function runLoadTest(config, metrics) {
   return results;
 }
 
+async function runStressTest(config, metrics) {
+  console.log('');
+  console.log(`Starting Stress Test: ${config.mode} mode...`);
+  console.log('─'.repeat(70));
+
+  const runner = new StressTestRunner({
+    serverUrl: config.serverUrl,
+    serverName: config.serverName,
+    clientType: config.clientType,
+    testDuration: config.testDuration,
+    messageInterval: config.messageInterval
+  });
+
+  const results = await runner.runRampUp(config.loadPhases, metrics);
+
+  console.log('');
+  console.log('Stress Test Results Summary:');
+  console.log('─'.repeat(70));
+  results.forEach(result => {
+    if (result.success) {
+      const { numClients, reliabilityData } = result;
+      console.log(`${numClients} clients: Loss=${reliabilityData.lossRate}% | Sent=${reliabilityData.messagesSent}`);
+    } else {
+      console.log(`${result.numClients} clients: FAILED - ${result.error}`);
+    }
+  });
+
+  return results;
+}
+
 async function runBroadcastTest(config, metrics) {
   console.log('');
   console.log(`Starting Broadcast Test (${config.mode} mode)...`);
@@ -239,30 +270,17 @@ async function main() {
   console.log('═'.repeat(70));
 
   try {
-    // Define metrics to record based on mode
-    let metrics = [];
-
     if (config.mode === 'init') {
-      // Record everything for init
-      metrics = ['rtt', 'connection_time', 'broadcast_latency', 'reliability', 'stability'];
-    } else if (config.mode === 'load') {
-      metrics = ['rtt', 'connection_time'];
+      // Run all tests for init
+      await runLoadTest(config, ['rtt', 'connection_time']);
+      await runBroadcastTest(config, ['broadcast_latency']);
+      await runStressTest(config, ['reliability', 'connection_stability']);
     } else if (config.mode === 'broadcast') {
-      metrics = ['broadcast_latency'];
+      await runBroadcastTest(config, ['broadcast_latency']);
     } else if (config.mode === 'stress') {
-      // Note: throughput and resources are recorded by server side
-      metrics = ['reliability', 'stability'];
-    }
-
-    if (config.mode === 'broadcast') {
-      await runBroadcastTest(config, metrics);
-    } else if (config.mode === 'init') {
-      // Run both for init
-      await runLoadTest(config, metrics);
-      await runBroadcastTest(config, metrics);
+      await runStressTest(config, ['reliability', 'connection_stability']);
     } else {
-      // load and stress modes use LoadTestRunner
-      await runLoadTest(config, metrics);
+      await runLoadTest(config, ['rtt', 'connection_time']);
     }
 
     console.log('');

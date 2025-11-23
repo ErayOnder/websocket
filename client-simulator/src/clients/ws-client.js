@@ -97,6 +97,10 @@ class WSClient {
     }
   }
 
+  clearMessageHandlers() {
+    this.messageHandlers = [];
+  }
+
   getConnectionTime() {
     return this.connectionTime;
   }

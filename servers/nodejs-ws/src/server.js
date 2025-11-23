@@ -39,7 +39,6 @@ class WSServer {
 
   handleConnection(ws) {
     this.clients.add(ws);
-    this.logger.log(`Client connected. Total clients: ${this.clients.size}`);
 
     ws.on('message', (data) => {
       this.handleMessage(ws, data);
@@ -47,7 +46,6 @@ class WSServer {
 
     ws.on('close', () => {
       this.clients.delete(ws);
-      this.logger.log(`Client disconnected. Total clients: ${this.clients.size}`);
     });
 
     ws.on('error', (error) => {

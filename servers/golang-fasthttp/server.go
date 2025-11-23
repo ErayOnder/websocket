@@ -196,20 +196,15 @@ func (s *Server) handleBroadcast(sender *websocket.Conn, msg *Message) {
 func (s *Server) addClient(conn *websocket.Conn) {
 	s.clientsMux.Lock()
 	s.clients[conn] = true
-	clientCount := len(s.clients)
 	s.clientsMux.Unlock()
-
-	s.logger.Log(fmt.Sprintf("Client connected. Total clients: %d", clientCount))
 }
 
 func (s *Server) removeClient(conn *websocket.Conn) {
 	s.clientsMux.Lock()
 	delete(s.clients, conn)
-	clientCount := len(s.clients)
 	s.clientsMux.Unlock()
 
 	conn.Close()
-	s.logger.Log(fmt.Sprintf("Client disconnected. Total clients: %d", clientCount))
 }
 
 func (s *Server) incrementMessageCount() {

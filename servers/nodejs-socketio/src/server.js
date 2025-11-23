@@ -44,7 +44,6 @@ class SocketIOServer {
 
   handleConnection(socket) {
     this.clients.set(socket.id, socket);
-    this.logger.log(`Client connected. Total clients: ${this.clients.size}`);
 
     socket.on('message', (data) => {
       this.handleMessage(socket, data);
@@ -52,7 +51,6 @@ class SocketIOServer {
 
     socket.on('disconnect', () => {
       this.clients.delete(socket.id);
-      this.logger.log(`Client disconnected. Total clients: ${this.clients.size}`);
     });
 
     socket.on('error', (error) => {

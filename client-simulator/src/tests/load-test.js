@@ -33,7 +33,12 @@ class LoadTest {
     this.messagesSent = 0;
     this.messagesReceived = 0;
 
+    // Clear all existing message handlers and set up fresh ones for THIS LoadTest instance
+    // This prevents accumulation of handlers when clients are reused across test phases
     this.clients.forEach(client => {
+      if (client.clearMessageHandlers) {
+        client.clearMessageHandlers();
+      }
       client.onMessage((message) => {
         this.handleResponse(client.clientId, message);
       });

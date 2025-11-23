@@ -199,20 +199,15 @@ func (s *Server) handleBroadcast(sender *Client, msg *Message) {
 func (s *Server) addClient(client *Client) {
 	s.clientsMux.Lock()
 	s.clients[client] = true
-	clientCount := len(s.clients)
 	s.clientsMux.Unlock()
-
-	s.logger.Log(fmt.Sprintf("Client connected. Total clients: %d", clientCount))
 }
 
 func (s *Server) removeClient(client *Client) {
 	s.clientsMux.Lock()
 	delete(s.clients, client)
-	clientCount := len(s.clients)
 	s.clientsMux.Unlock()
 
 	client.conn.Close()
-	s.logger.Log(fmt.Sprintf("Client disconnected. Total clients: %d", clientCount))
 }
 
 func (s *Server) incrementMessageCount() {

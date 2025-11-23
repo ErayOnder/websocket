@@ -165,10 +165,7 @@ func (s *Server) handleBroadcast(sender *Client, msg *Message) {
 func (s *Server) addClient(client *Client) {
 	s.clientsMux.Lock()
 	s.clients[client] = true
-	count := len(s.clients)
 	s.clientsMux.Unlock()
-
-	s.logger.Log(fmt.Sprintf("Client connected. Total clients: %d", count))
 }
 
 func (s *Server) removeClient(client *Client) {
