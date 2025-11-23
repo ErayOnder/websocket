@@ -65,6 +65,8 @@ class LoadTestRunner extends TestRunner {
         connectedClientCount: connectedClients.length,
         failedConnectionCount: failedConnections.length,
         reliabilityData: reliabilityData,
+        connectionData: connectionData,
+        stabilityData: stabilityData
       };
 
     } catch (error) {

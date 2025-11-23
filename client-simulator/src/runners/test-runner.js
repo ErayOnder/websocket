@@ -34,9 +34,16 @@ class TestRunner {
    * @param {number} iterations - Number of iterations per load phase
    * @returns {Promise<Array>} Results for all phases
    */
-  async runPhased(loadPhases, iterations = 3) {
+  async runPhased(loadPhases, iterations = 3, metrics = []) {
     this.logTestStart(loadPhases, iterations);
-    this.logger.clearPhasedTestData(this.config.serverName, loadPhases, this.getFileTypes());
+
+    // Determine file types to clear based on metrics
+    // Map 'stability' metric to 'connection_stability' file type
+    const fileTypesToClear = metrics.length > 0
+      ? metrics.map(m => m === 'stability' ? 'connection_stability' : m)
+      : this.getFileTypes();
+
+    this.logger.clearPhasedTestData(this.config.serverName, loadPhases, fileTypesToClear);
 
     const results = [];
     for (const numClients of loadPhases) {
@@ -45,7 +52,7 @@ class TestRunner {
         this.logger.log(`Phase: ${numClients} clients - Iteration ${iteration}/${iterations}`);
         this.logger.log('---');
 
-        const result = await this.run(numClients);
+        const result = await this.run(numClients, metrics);
         results.push({
           numClients,
           iteration,

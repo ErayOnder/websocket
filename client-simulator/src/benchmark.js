@@ -10,7 +10,7 @@ function parseArgs() {
     clientType: 'ws',
 
     // Defaults (will be overridden by mode settings)
-    loadPhases: [200, 400, 800, 1600, 3200],
+    loadPhases: [400, 800, 1600, 3200, 6400],
     iterations: 3,
     testDuration: 60000, // 60 seconds
     messageInterval: 100, // For load test
